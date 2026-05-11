@@ -14,6 +14,7 @@ interface Props { title: string; prompt: string; restaurantData: any; location?:
 
 export default function LiveModuleGenerator({ title, prompt, restaurantData, location }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const { user, refreshUser } = useAuth();
   const [displayedText, setDisplayedText] = useState('');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
