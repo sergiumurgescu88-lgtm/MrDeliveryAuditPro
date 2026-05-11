@@ -157,6 +157,14 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   };
 
+
+  useEffect(() => {
+    if (isComplete && displayedText.length > 50 && location) {
+      const key = `mrdelivery_report_${title}_${encodeURIComponent(location)}`;
+      localStorage.setItem(key, displayedText);
+    }
+  }, [isComplete, displayedText, location, title]);
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 mb-6">
       <div className="flex justify-between items-center mb-4">
