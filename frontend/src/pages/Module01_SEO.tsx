@@ -1,21 +1,26 @@
+import { motion } from 'framer-motion';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 
-const SEO_PROMPT = `Generează o analiză SEO locală detaliată pentru un restaurant. Structură obligatorie:
-1. Analiza SEO Locală (paragraf strategic)
-2. Cuvinte Cheie cu Potențial (High-Intent) - listă cu 5 termeni
-3. Analiza Competiției - compară cu 3 competitori locali (Forte/Slab)
-4. Strategie de Diferențiere MrDelivery
-5. Recomandări On-Page (bullet points)
-6. Puncte Forte & Oportunități
-Ton: profesionist, orientat spre conversie, specific pieței din România.`;
+export default function Module01_SEO({ selectedLocation }: { selectedLocation?: string }) {
+  const prompt = selectedLocation
+    ? `Realizează o analiză SEO locală detaliată și acționabilă pentru locația: "${selectedLocation}". Include: cuvinte cheie cu intenție ridicată (high-intent), analiza competiției locale, strategie de diferențiere, recomandări on-page & off-page, optimizare Google Business Profile, și un plan de acțiune pe 30 de zile. Focus specific pe piața din România și pe tipul de business identificat.`
+    : '';
 
-export default function Module01_SEO() {
-  const restaurantData = { name: 'Dum-Dum Food', address: 'Calea Giulești 123, București', rating: 4.1 };
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900 mb-2">01 SEO Analysis</h1>
-      <p className="text-slate-400 mb-6">Optimizare vizibilitate locală și poziționare în căutări</p>
-      <LiveModuleGenerator title="Analiză SEO Locală" prompt={SEO_PROMPT} restaurantData={restaurantData} />
-    </div>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <div className="glass-card p-6">
+        <h2 className="text-xl font-bold text-slate-800 mb-2">01 SEO Analysis</h2>
+        <p className="text-sm text-slate-500 mb-4">Optimizare vizibilitate locală și poziționare în căutări</p>
+        <p className="text-xs text-slate-400">Folosește selectorul global de locație din partea de sus pentru a genera analiza.</p>
+      </div>
+      {selectedLocation && (
+        <LiveModuleGenerator
+          location={selectedLocation}
+          title="Analiză SEO Locală"
+          prompt={prompt}
+          restaurantData={{ name: selectedLocation, location: selectedLocation }}
+        />
+      )}
+    </motion.div>
   );
 }

@@ -24,9 +24,9 @@ const CONTENT_PILLARS = [
   { title: 'Community & Local', desc: 'Evenimente zonă, parteneriate locale, caritate', icon: '🤝' }
 ];
 
-export default function Module06_SocialMedia() {
+export default function Module06_SocialMedia({ selectedLocation }: { selectedLocation?: string }) {
   const [activePlatform, setActivePlatform] = useState('instagram');
-  const restaurantData = { name: 'Dum-Dum Food', address: 'Calea Giulești 123, București', rating: 4.1 };
+  const parts = (selectedLocation || '').split(','); const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || selectedLocation || '', rating: 4.5 };
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
@@ -72,7 +72,7 @@ export default function Module06_SocialMedia() {
         ))}
       </div>
 
-      <LiveModuleGenerator
+      <LiveModuleGenerator location={selectedLocation}
         title={`Strategie Social Media: ${PLATFORMS.find(p => p.id === activePlatform)?.name}`}
         prompt={`${SOCIAL_PROMPT}\n\nFocus specific: ${activePlatform === 'general' ? 'Strategie integrată cross-platform cu calendar unificat' : `Tactici avansate și format optimizat pentru ${PLATFORMS.find(p => p.id === activePlatform)?.name}`}`}
         restaurantData={restaurantData}

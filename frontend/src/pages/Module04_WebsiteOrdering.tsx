@@ -10,9 +10,9 @@ const WEBSITE_PROMPT = `Generează un audit complet pentru website-ul și sistem
 6. Checklist Acționabil (prioritizat: Quick Wins / Medium / Long-term)
 Ton: expert în UX/UI, conversion rate optimization și e-commerce food delivery. Limba: română. Format: clar, cu bullet points, metrici estimative și secțiuni distincte.`;
 
-export default function Module04_WebsiteOrdering() {
+export default function Module04_WebsiteOrdering({ selectedLocation }: { selectedLocation?: string }) {
   const [uxScore] = useState(58);
-  const restaurantData = { name: 'Dum-Dum Food', address: 'Calea Giulești 123, București', rating: 4.1 };
+  const parts = (selectedLocation || '').split(','); const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || selectedLocation || '', rating: 4.5 };
 
   const funnelSteps = [
     { label: 'Vizitatori', value: '100%', drop: 0 },
@@ -89,7 +89,7 @@ export default function Module04_WebsiteOrdering() {
         ))}
       </div>
 
-      <LiveModuleGenerator title="Audit Website & Ordering" prompt={WEBSITE_PROMPT} restaurantData={restaurantData} />
+      <LiveModuleGenerator location={selectedLocation} title="Audit Website & Ordering" prompt={WEBSITE_PROMPT} restaurantData={restaurantData} />
     </div>
   );
 }

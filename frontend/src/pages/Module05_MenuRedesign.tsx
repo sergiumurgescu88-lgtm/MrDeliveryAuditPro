@@ -9,8 +9,8 @@ const MENU_PROMPT = `Generează o strategie completă de redesign al meniului pe
 6. Checklist Acționabil (Quick Wins / Medium / Long-term)
 Ton: expert în menu engineering & food psychology, orientat spre creșterea ticket-ului mediu și conversie. Limba: română. Format: clar, cu exemple concrete, bullet points și secțiuni distincte.`;
 
-export default function Module05_MenuRedesign() {
-  const restaurantData = { name: 'Dum-Dum Food', address: 'Calea Giulești 123, București', rating: 4.1 };
+export default function Module05_MenuRedesign({ selectedLocation }: { selectedLocation?: string }) {
+  const parts = (selectedLocation || '').split(','); const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || selectedLocation || '', rating: 4.5 };
 
   const beforeAfter = [
     { before: 'Ciorbă de pui', after: 'Ciorbă rădăuțeană cremoasă, gătită lent 6 ore cu carne de pui de la ferme locale, smântână proaspătă și leuștean cules din grădină.' },
@@ -70,7 +70,7 @@ export default function Module05_MenuRedesign() {
         </div>
       </div>
 
-      <LiveModuleGenerator title="Audit & Redesign Meniu" prompt={MENU_PROMPT} restaurantData={restaurantData} />
+      <LiveModuleGenerator location={selectedLocation} title="Audit & Redesign Meniu" prompt={MENU_PROMPT} restaurantData={restaurantData} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+
 import { motion } from 'framer-motion';
 import { PDFDownloadButton } from '../components/PDFReport';
 
@@ -15,8 +15,8 @@ const ACTIONS = [
   { title: 'Contactează Echipa', desc: 'Solicită implementare sau consultanță', icon: '💬' }
 ];
 
-export default function Module00_Dashboard() {
-  const [restaurant] = useState({ name: 'Dum-Dum Food', address: 'Calea Giulești 123, București', rating: 4.1 });
+export default function Module00_Dashboard({ selectedLocation }: { selectedLocation?: string }) {
+  const parts = (selectedLocation || '').split(','); const restaurant = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || selectedLocation || '', rating: 4.5 };
 
   return (
     <div className="space-y-8">

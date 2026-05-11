@@ -8,8 +8,8 @@ const MAPS_IMAGES_PROMPT = `Generează un audit vizual complet pentru imaginile 
 5. Recomandări Acționabile (prioritizate: Quick Wins / Medium / Long-term)
 Ton: expert în fotografie culinară & branding vizual, orientat spre conversie și percepție premium. Limba: română. Format: clar, cu bullet points și secțiuni distincte.`;
 
-export default function Module02_GoogleMapsImages() {
-  const restaurantData = { name: 'Dum-Dum Food', address: 'Calea Giulești 123, București', rating: 4.1 };
+export default function Module02_GoogleMapsImages({ selectedLocation }: { selectedLocation?: string }) {
+  const parts = (selectedLocation || '').split(','); const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || selectedLocation || '', rating: 4.5 };
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       <h1 className="text-2xl font-bold text-slate-900 mb-2">02 Google Maps Images</h1>
@@ -28,7 +28,7 @@ export default function Module02_GoogleMapsImages() {
         ))}
       </div>
 
-      <LiveModuleGenerator title="Analiză Foto Google Maps" prompt={MAPS_IMAGES_PROMPT} restaurantData={restaurantData} />
+      <LiveModuleGenerator location={selectedLocation} title="Analiză Foto Google Maps" prompt={MAPS_IMAGES_PROMPT} restaurantData={restaurantData} />
     </div>
   );
 }

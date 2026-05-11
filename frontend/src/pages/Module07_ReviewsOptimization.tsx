@@ -24,8 +24,8 @@ const RESPONSE_TEMPLATES = [
   { type: 'Negativă', color: 'bg-red-50 border-red-200 text-red-800', text: 'Ne cerem scuze sincer pentru experiența neplăcută. Feedback-ul dumneavoastră este esențial pentru noi. Am discutat deja cu echipa despre [Problemă] și am luat măsuri imediate. Vă rugăm să ne scrieți la contact@restaurant.ro pentru a remedia situația.' }
 ];
 
-export default function Module07_ReviewsOptimization() {
-  const restaurantData = { name: 'Dum-Dum Food', address: 'Calea Giulești 123, București', rating: 4.1 };
+export default function Module07_ReviewsOptimization({ selectedLocation }: { selectedLocation?: string }) {
+  const parts = (selectedLocation || '').split(','); const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || selectedLocation || '', rating: 4.5 };
   const sentimentScore = 72;
 
   return (
@@ -92,7 +92,7 @@ export default function Module07_ReviewsOptimization() {
         ))}
       </div>
 
-      <LiveModuleGenerator title="Audit Recenzii & Reputație" prompt={REVIEWS_PROMPT} restaurantData={restaurantData} />
+      <LiveModuleGenerator location={selectedLocation} title="Audit Recenzii & Reputație" prompt={REVIEWS_PROMPT} restaurantData={restaurantData} />
     </div>
   );
 }

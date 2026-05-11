@@ -28,8 +28,8 @@ const SHOT_LIST = [
   { id: 8, title: 'UGC Authentic Style', desc: 'Cadru "telefon mobil", natural, pentru social proof & reels', priority: '🟢 Standard' }
 ];
 
-export default function Module09_PhotoRedesign() {
-  const restaurantData = { name: 'Dum-Dum Food', address: 'Calea Giulești 123, București', rating: 4.1 };
+export default function Module09_PhotoRedesign({ selectedLocation }: { selectedLocation?: string }) {
+  const parts = (selectedLocation || '').split(','); const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || selectedLocation || '', rating: 4.5 };
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
@@ -81,7 +81,7 @@ export default function Module09_PhotoRedesign() {
         </ul>
       </div>
 
-      <LiveModuleGenerator title="Audit & Strategie Foto" prompt={PHOTO_PROMPT} restaurantData={restaurantData} />
+      <LiveModuleGenerator location={selectedLocation} title="Audit & Strategie Foto" prompt={PHOTO_PROMPT} restaurantData={restaurantData} />
     </div>
   );
 }

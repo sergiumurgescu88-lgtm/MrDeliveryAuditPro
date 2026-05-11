@@ -34,7 +34,7 @@ const MATRIX = [
   { quadrant: '⏳ Time Sinks', desc: 'Impact Mic / Efort Mare', items: ['Rebranding complet', 'App mobilă custom', 'Meniu tipărit luxury', 'Evenimente complexe'] }
 ];
 
-export default function Module10_GrowthPlan() {
+export default function Module10_GrowthPlan({ selectedLocation }: { selectedLocation?: string }) {
   const restaurantData = { name: 'Dum-Dum Food', address: 'Calea Giulești 123, București', rating: 4.1 };
 
   return (
@@ -119,7 +119,7 @@ export default function Module10_GrowthPlan() {
         </p>
       </div>
 
-      <LiveModuleGenerator title="Plan de Creștere 90 Zile" prompt={GROWTH_PROMPT} restaurantData={restaurantData} />
+      <LiveModuleGenerator location={selectedLocation} title="Plan de Creștere 90 Zile" prompt={GROWTH_PROMPT} restaurantData={restaurantData} />
     </div>
   );
 }

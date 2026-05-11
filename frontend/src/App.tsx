@@ -1,6 +1,7 @@
 import { useState, Suspense, lazy, useEffect } from 'react';
 import LoadingSkeleton from './components/LoadingSkeleton';
 import SEO from './components/SEO';
+import LocationSearch from './components/LocationSearch';
 import { trackPageView, trackEvent } from './lib/analytics';
 
 const Module00_Dashboard = lazy(() => import('./pages/Module00_Dashboard'));
@@ -33,12 +34,10 @@ const MODULES = [
 
 function App() {
   const [active, setActive] = useState(0);
+  const [selectedLocation, setSelectedLocation] = useState(() => localStorage.getItem('mrdelivery_loc') || '');
 
-  // 📈 Track pageview la schimbarea modulului
-  useEffect(() => {
-    trackPageView(`/#module-${active}`);
-  }, [active]);
-
+  useEffect(() => { if (selectedLocation) localStorage.setItem('mrdelivery_loc', selectedLocation); }, [selectedLocation]);
+  useEffect(() => { trackPageView(`/#module-${active}`); }, [active]);
   const currentModule = MODULES.find(m => m.id === active) || MODULES[0];
 
   return (
@@ -66,24 +65,27 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-10 relative z-10">
+      <main className="max-w-6xl mx-auto px-4 py-6 relative z-10">
+        <div className="mb-5">
+          <LocationSearch onSelect={setSelectedLocation} />
+        </div>
         <Suspense fallback={<LoadingSkeleton />}>
-          {active === 0 && <Module00_Dashboard />}
-          {active === 1 && <Module01_SEO />}
-          {active === 2 && <Module02_GoogleMapsImages />}
-          {active === 3 && <Module03_DeliveryPlatforms />}
-          {active === 4 && <Module04_WebsiteOrdering />}
-          {active === 5 && <Module05_MenuRedesign />}
-          {active === 6 && <Module06_SocialMedia />}
-          {active === 7 && <Module07_ReviewsOptimization />}
-          {active === 8 && <Module08_LocalMapsSEO />}
-          {active === 9 && <Module09_PhotoRedesign />}
-          {active === 10 && <Module10_GrowthPlan />}
+          {active === 0 && <Module00_Dashboard key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 1 && <Module01_SEO key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 2 && <Module02_GoogleMapsImages key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 3 && <Module03_DeliveryPlatforms key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 4 && <Module04_WebsiteOrdering key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 5 && <Module05_MenuRedesign key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 6 && <Module06_SocialMedia key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 7 && <Module07_ReviewsOptimization key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 8 && <Module08_LocalMapsSEO key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 9 && <Module09_PhotoRedesign key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 10 && <Module10_GrowthPlan key={selectedLocation} selectedLocation={selectedLocation} />}
           {active === 99 && <ModuleAdmin_Dashboard />}
         </Suspense>
       </main>
 
-      <footer className="relative z-10 border-t border-slate-100 py-6 text-center text-xs text-slate-400 mt-12">
+      <footer className="relative z-10 border-t border-slate-100 py-6 text-center text-xs text-slate-400 mt-8">
         © {new Date().getFullYear()} Restaurant Audit Pro • Powered by MrDelivery.ro • AI: OpenRouter
       </footer>
     </div>
