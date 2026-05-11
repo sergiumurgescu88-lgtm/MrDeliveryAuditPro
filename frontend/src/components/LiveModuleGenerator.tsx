@@ -1,3 +1,4 @@
+import { useAuth } from "../context/AuthContext";
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { logAudit } from '../lib/dataLogger';
@@ -99,7 +100,20 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
     } : { ...restaurantData, name: location?.split(',')[0]?.trim() || restaurantData?.name };
 
     try {
-      const res = await fetch('/api/audit/stream', {
+      
+    // 🔒 Verificare Credite
+    if (!user) { alert('🔑 Trebuie să te autentifici pentru a genera un audit.'); return; }
+    if (user.credits < 10) { alert('💎 Credite insuficiente. Ai nevoie de 10 credite pentru o generare.'); return; }
+    try {
+      const spendRes = await fetch('/api/credits/spend', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('mrdelivery_token')}` }
+      });
+      if (!spendRes.ok) { alert('❌ Eroare la deducerea creditelor sau credite insuficiente.'); return; }
+      await refreshUser();
+    } catch (e) { alert('❌ Eroare de rețea la verificare credite.'); return; }
+    // ✅ Credite deduse, pornim generarea
+    const res = await fetch('/api/audit/stream', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, restaurantData: enrichedData }),
         signal: abortControllerRef.current.signal

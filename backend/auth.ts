@@ -7,7 +7,16 @@ import { getUser, createUser, deductCredits, addCredits } from './db';
 const router = Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const JWT_SECRET = process.env.JWT_SECRET || 'mrdelivery_jwt_fallback_2026';
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+
+let stripeInstance: Stripe | null = null;
+const getStripe = () => {
+  if (!stripeInstance) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key || !key.startsWith('sk_')) throw new Error('STRIPE_SECRET_KEY missing or invalid');
+    stripeInstance = new Stripe(key, { apiVersion: '2023-10-16' });
+  }
+  return stripeInstance;
+};
 
 router.post('/api/auth/google', async (req, res) => {
   try {
@@ -52,6 +61,7 @@ router.post('/api/stripe/checkout', async (req, res) => {
     if (!authHeader) return res.status(401).json({ error: 'No token' });
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
@@ -68,6 +78,7 @@ router.get('/api/stripe/verify', async (req, res) => {
   try {
     const { session_id } = req.query;
     if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(session_id as string);
     if (session.payment_status !== 'paid') return res.status(400).json({ error: 'Neplătit' });
     const userId = session.metadata?.userId;
