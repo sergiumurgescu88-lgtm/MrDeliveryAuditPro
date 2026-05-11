@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 export type ModuleStatus = 'idle' | 'generating' | 'completed' | 'error';
 export interface ModuleResult { status: ModuleStatus; content: string; error?: string; timestamp?: number; }
 interface AuditContextType {
@@ -12,7 +12,10 @@ const AuditContext = createContext<AuditContextType | null>(null);
 export function AuditProvider({ children }: { children: ReactNode }) {
   const [results, setResults] = useState<Record<string, ModuleResult>>({});
   const updateResult = (moduleId: string, data: Partial<ModuleResult>) => {
-    setResults(prev => ({ ...prev, [moduleId]: { status: 'idle', content: '', ...prev[moduleId], ...data } }));
+    setResults(prev => {
+      const existing = prev[moduleId] || { status: 'idle' as ModuleStatus, content: '' };
+      return { ...prev, [moduleId]: { ...existing, ...data } };
+    });
   };
   const resetAudit = () => setResults({});
   const isGenerating = Object.values(results).some(r => r.status === 'generating');

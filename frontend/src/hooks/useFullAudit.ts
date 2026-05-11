@@ -37,7 +37,9 @@ export function useFullAudit() {
           }
         }
         updateResult(mod.id, { status: 'completed', content: fullText, timestamp: Date.now() });
-      } catch (err: any) { updateResult(mod.id, { status: 'error', error: err.message, content: '' }); }
+      } catch (err: any) {
+        updateResult(mod.id, { status: 'error', error: err.message, content: '' });
+      }
       await new Promise(r => setTimeout(r, 600));
     }
   };
