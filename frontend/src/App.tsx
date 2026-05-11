@@ -37,15 +37,17 @@ const MODULES = [
 
 function AuthButton() {
   const { user, login, logout, loading, buyCredits } = useAuth();
-  if (loading) return <span className="text-xs text-slate-400">⏳</span>;
+  if (loading) return <span className="text-[10px] text-slate-400">⏳</span>;
   if (user) return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs font-medium bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md border border-emerald-200">💎 {user.credits} credite</span>
-      <button onClick={buyCredits} className="px-2 py-1 bg-amber-500 text-white text-xs font-medium rounded-md hover:bg-amber-600 transition">💳 +100 (99 RON)</button>
-      <button onClick={logout} className="text-xs text-slate-500 hover:text-red-500 transition">Ieșire</button>
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] font-medium bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">💎 {user.credits}</span>
+        <button onClick={buyCredits} className="px-1.5 py-0.5 bg-amber-500 text-white text-[10px] font-medium rounded hover:bg-amber-600 transition">💳 +100 (99 RON)</button>
+      </div>
+      <button onClick={logout} className="text-[10px] text-slate-400 hover:text-red-500 transition self-end">Ieșire</button>
     </div>
   );
-  return <button onClick={login} className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition">🔑 Login Google</button>;
+  return <button onClick={login} className="px-2 py-1 bg-white border border-slate-300 rounded text-[10px] font-medium text-slate-700 hover:bg-slate-50 transition">🔑 Login</button>;
 }
 
 function App() {

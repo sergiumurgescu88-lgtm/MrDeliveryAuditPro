@@ -5,10 +5,9 @@ import { logAudit } from '../lib/dataLogger';
 
 const cleanText = (text: string) => {
   return text
+    .replace(/([a-zA-Z])\s+([ăâîșțĂÂÎȘȚ])/g, '$1$2')
     .replace(/\s+([.,;:!?\)\]}])/g, '$1')
     .replace(/([\(\[{])\s+/g, '$1')
-    .replace(/([a-zA-Z])\s+([ăâîșțĂÂÎȘȚ])/g, '$1$2')
-    .replace(/(\d)\s+(\d)/g, '$1$2')
     .replace(/\s{2,}/g, ' ');
 };
 
