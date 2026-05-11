@@ -72,17 +72,17 @@ function App() {
           <LocationSearch onSelect={setSelectedLocation} />
         </div>
         <Suspense fallback={<LoadingSkeleton />}>
-          {active === 0 && <Module00_Dashboard key={selectedLocation}  />}
-          {active === 1 && <Module01_SEO key={selectedLocation}  />}
-          {active === 2 && <Module02_GoogleMapsImages key={selectedLocation}  />}
-          {active === 3 && <Module03_DeliveryPlatforms key={selectedLocation}  />}
-          {active === 4 && <Module04_WebsiteOrdering key={selectedLocation}  />}
-          {active === 5 && <Module05_MenuRedesign key={selectedLocation}  />}
-          {active === 6 && <Module06_SocialMedia key={selectedLocation}  />}
-          {active === 7 && <Module07_ReviewsOptimization key={selectedLocation}  />}
-          {active === 8 && <Module08_LocalMapsSEO key={selectedLocation}  />}
-          {active === 9 && <Module09_PhotoRedesign key={selectedLocation}  />}
-          {active === 10 && <Module10_GrowthPlan key={selectedLocation}  />}
+          {active === 0 && <Module00_Dashboard key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 1 && <Module01_SEO key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 2 && <Module02_GoogleMapsImages key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 3 && <Module03_DeliveryPlatforms key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 4 && <Module04_WebsiteOrdering key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 5 && <Module05_MenuRedesign key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 6 && <Module06_SocialMedia key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 7 && <Module07_ReviewsOptimization key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 8 && <Module08_LocalMapsSEO key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 9 && <Module09_PhotoRedesign key={selectedLocation} selectedLocation={selectedLocation} />}
+          {active === 10 && <Module10_GrowthPlan key={selectedLocation} selectedLocation={selectedLocation} />}
           {active === 99 && <ModuleAdmin_Dashboard />}
         </Suspense>
       </main>
