@@ -2,6 +2,7 @@ import { useState, Suspense, lazy, useEffect } from 'react';
 import LoadingSkeleton from './components/LoadingSkeleton';
 import SEO from './components/SEO';
 import LocationSearch from './components/LocationSearch';
+import SparkEffect from './components/SparkEffect';
 import { trackPageView, trackEvent } from './lib/analytics';
 
 const Module00_Dashboard = lazy(() => import('./pages/Module00_Dashboard'));
@@ -44,6 +45,7 @@ function App() {
     <div className="min-h-screen bg-white text-slate-900 relative">
       <SEO title={currentModule.title} description={currentModule.desc} url={`https://mrdelivery.online/#module-${active}`} />
       <div className="bg-mesh" />
+      <SparkEffect />
       <div className="bg-grid" />
 
       <header className="sticky top-4 z-50 mx-4 md:mx-8 mt-4">
