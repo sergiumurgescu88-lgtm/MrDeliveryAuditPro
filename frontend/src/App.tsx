@@ -4,6 +4,7 @@ import SEO from './components/SEO';
 import LocationSearch from './components/LocationSearch';
 import SparkEffect from './components/SparkEffect';
 import { trackPageView, trackEvent } from './lib/analytics';
+import LandingPage from './pages/LandingPage';
 
 const Module00_Dashboard = lazy(() => import('./pages/Module00_Dashboard'));
 const Module01_SEO = lazy(() => import('./pages/Module01_SEO'));
@@ -34,11 +35,17 @@ const MODULES = [
 ];
 
 function App() {
+  const [view, setView] = useState<'landing' | 'app'>('landing');
   const [active, setActive] = useState(0);
   const [selectedLocation, setSelectedLocation] = useState(() => localStorage.getItem('mrdelivery_loc') || '');
 
   useEffect(() => { if (selectedLocation) localStorage.setItem('mrdelivery_loc', selectedLocation); }, [selectedLocation]);
-  useEffect(() => { trackPageView(`/#module-${active}`); }, [active]);
+  useEffect(() => { if (view === 'app') trackPageView(`/#module-${active}`); }, [active, view]);
+
+  if (view === 'landing') {
+    return <LandingPage onEnter={() => setView('app')} />;
+  }
+
   const currentModule = MODULES.find(m => m.id === active) || MODULES[0];
 
   return (
