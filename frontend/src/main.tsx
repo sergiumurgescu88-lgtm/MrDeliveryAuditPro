@@ -1,3 +1,4 @@
+import { AuthProvider } from "./context/AuthContext";
 import { AuditProvider } from "./context/AuditContext";
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -8,7 +9,7 @@ import './index.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <HelmetProvider>
-      <AuditProvider><App /></AuditProvider>
+      <AuditProvider><AuthProvider><App /></AuthProvider></AuditProvider>
     </HelmetProvider>
   </React.StrictMode>,
 )

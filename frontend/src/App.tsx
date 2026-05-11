@@ -4,6 +4,7 @@ import SEO from './components/SEO';
 import LocationSearch from './components/LocationSearch';
 import SparkEffect from './components/SparkEffect';
 import { trackPageView, trackEvent } from './lib/analytics';
+import { useAuth } from './context/AuthContext';
 import LandingPage from './pages/LandingPage';
 
 const Module00_Dashboard = lazy(() => import('./pages/Module00_Dashboard'));
@@ -34,6 +35,18 @@ const MODULES = [
   { id: 99, label: '🔒 Admin', title: 'Admin Dashboard', desc: 'Panou de control intern și metrici.' }
 ];
 
+function AuthButton() {
+  const { user, login, logout, loading } = useAuth();
+  if (loading) return <span className="text-xs text-slate-400">⏳</span>;
+  if (user) return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs font-medium bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md border border-emerald-200">💎 {user.credits} credite</span>
+      <button onClick={logout} className="text-xs text-slate-500 hover:text-red-500 transition">Deconectare</button>
+    </div>
+  );
+  return <button onClick={login} className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition">🔑 Login Google</button>;
+}
+
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const [active, setActive] = useState(0);
@@ -62,6 +75,9 @@ function App() {
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center font-bold text-white shadow-lg shadow-amber-500/20">M</div>
             <h1 className="text-base font-semibold tracking-tight">MrDelivery <span className="text-amber-500">Audit Pro</span></h1>
+          <div className="flex items-center gap-2 ml-auto">
+            <AuthButton />
+          </div>
           </div>
           <nav className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {MODULES.map(m => (
