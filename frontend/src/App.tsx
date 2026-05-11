@@ -42,15 +42,17 @@ function App() {
   useEffect(() => { if (selectedLocation) localStorage.setItem('mrdelivery_loc', selectedLocation); }, [selectedLocation]);
   useEffect(() => { if (view === 'app') trackPageView(`/#module-${active}`); }, [active, view]);
 
-  if (view === 'landing') {
-    return <LandingPage onEnter={() => setView('app')} />;
-  }
+  const handleNav = (id: number) => {
+    setView('app');
+    setActive(id);
+    trackEvent('nav_click', { module: MODULES.find(m => m.id === id)?.label });
+  };
 
   const currentModule = MODULES.find(m => m.id === active) || MODULES[0];
 
   return (
     <div className="min-h-screen bg-white text-slate-900 relative">
-      <SEO title={currentModule.title} description={currentModule.desc} url={`https://mrdelivery.online/#module-${active}`} />
+      <SEO title={view === 'landing' ? 'Restaurant Audit Pro' : currentModule.title} description={currentModule.desc} url={`https://mrdelivery.online/#module-${active}`} />
       <div className="bg-mesh" />
       <SparkEffect />
       <div className="bg-grid" />
@@ -63,9 +65,9 @@ function App() {
           </div>
           <nav className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {MODULES.map(m => (
-              <button key={m.id} onClick={() => { setActive(m.id); trackEvent('nav_click', { module: m.label }); }}
+              <button key={m.id} onClick={() => handleNav(m.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                  active === m.id ? 'bg-amber-500/15 text-amber-600 border border-amber-500/30 shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+                  view === 'app' && active === m.id ? 'bg-amber-500/15 text-amber-600 border border-amber-500/30 shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
                 }`}>
                 {m.label}
               </button>
@@ -75,23 +77,29 @@ function App() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 relative z-10">
-        <div className="mb-5">
-          <LocationSearch onSelect={setSelectedLocation} />
-        </div>
-        <Suspense fallback={<LoadingSkeleton />}>
-          {active === 0 && <Module00_Dashboard key={selectedLocation} selectedLocation={selectedLocation} />}
-          {active === 1 && <Module01_SEO key={selectedLocation} selectedLocation={selectedLocation} />}
-          {active === 2 && <Module02_GoogleMapsImages key={selectedLocation} selectedLocation={selectedLocation} />}
-          {active === 3 && <Module03_DeliveryPlatforms key={selectedLocation} selectedLocation={selectedLocation} />}
-          {active === 4 && <Module04_WebsiteOrdering key={selectedLocation} selectedLocation={selectedLocation} />}
-          {active === 5 && <Module05_MenuRedesign key={selectedLocation} selectedLocation={selectedLocation} />}
-          {active === 6 && <Module06_SocialMedia key={selectedLocation} selectedLocation={selectedLocation} />}
-          {active === 7 && <Module07_ReviewsOptimization key={selectedLocation} selectedLocation={selectedLocation} />}
-          {active === 8 && <Module08_LocalMapsSEO key={selectedLocation} selectedLocation={selectedLocation} />}
-          {active === 9 && <Module09_PhotoRedesign key={selectedLocation} selectedLocation={selectedLocation} />}
-          {active === 10 && <Module10_GrowthPlan key={selectedLocation} selectedLocation={selectedLocation} />}
-          {active === 99 && <ModuleAdmin_Dashboard />}
-        </Suspense>
+        {view === 'landing' ? (
+          <LandingPage onEnter={() => handleNav(0)} />
+        ) : (
+          <>
+            <div className="mb-5">
+              <LocationSearch onSelect={setSelectedLocation} />
+            </div>
+            <Suspense fallback={<LoadingSkeleton />}>
+              {active === 0 && <Module00_Dashboard key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 1 && <Module01_SEO key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 2 && <Module02_GoogleMapsImages key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 3 && <Module03_DeliveryPlatforms key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 4 && <Module04_WebsiteOrdering key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 5 && <Module05_MenuRedesign key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 6 && <Module06_SocialMedia key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 7 && <Module07_ReviewsOptimization key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 8 && <Module08_LocalMapsSEO key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 9 && <Module09_PhotoRedesign key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 10 && <Module10_GrowthPlan key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 99 && <ModuleAdmin_Dashboard />}
+            </Suspense>
+          </>
+        )}
       </main>
 
       <footer className="relative z-10 border-t border-slate-100 py-6 text-center text-xs text-slate-400 mt-8">
