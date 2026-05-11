@@ -53,6 +53,14 @@ function AuthButton() {
 function App() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const [active, setActive] = useState(0);
+  const goToNext = () => {
+    if (active < 10) {
+      setActive(active + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+  const hasNext = active < 10;
+
   const [selectedLocation, setSelectedLocation] = useState(() => localStorage.getItem('mrdelivery_loc') || '');
 
   useEffect(() => { if (selectedLocation) localStorage.setItem('mrdelivery_loc', selectedLocation); }, [selectedLocation]);
@@ -116,6 +124,15 @@ function App() {
               {active === 9 && <Module09_PhotoRedesign key={selectedLocation} selectedLocation={selectedLocation} />}
               {active === 10 && <Module10_GrowthPlan key={selectedLocation} selectedLocation={selectedLocation} />}
               {active === 99 && <ModuleAdmin_Dashboard />}
+
+      {hasNext && (
+        <div className="mt-8 flex justify-end border-t border-slate-200 pt-4 pb-2">
+          <button onClick={goToNext} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition flex items-center gap-2 shadow-sm">
+            Următorul Modul →
+          </button>
+        </div>
+      )}
+
             </Suspense>
           </>
         )}
