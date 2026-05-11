@@ -67,7 +67,7 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
       const item = queueRef.current.shift()!;
       const delay = streamEndedRef.current ? 300 : item.delay;
       await new Promise(r => setTimeout(r, delay));
-      setDisplayedText(prev => prev + item.text);
+      setDisplayedText(prev => (prev + item.text).replace(/([a-zA-ZăâîșțĂÂÎȘȚ0-9])\s+([a-zA-ZăâîșțĂÂÎȘȚ0-9])/g, "$1$2").replace(/\s{2,}/g, " "));
       processedItemsRef.current++;
       setProgress(Math.min((processedItemsRef.current / Math.max(totalItemsRef.current, 1)) * 95, 95));
     }
