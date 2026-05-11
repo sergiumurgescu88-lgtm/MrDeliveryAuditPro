@@ -1,82 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 
-const SOCIAL_PROMPT = `Generează o strategie completă de social media pentru un restaurant, adaptată pe platforme și orientată spre creșterea organică și conversia în comenzi. Structură obligatorie:
-1. Platform-Specific Strategy (Instagram: aesthetic + stories + reels; TikTok: viral hooks + UGC + behind-the-scenes; Facebook: community + events + local targeting)
-2. Content Pillars Matrix (4 categorii cu exemple concrete: Behind-the-scenes, User-Generated Content, Educational/Culinary Tips, Community/Local Partnerships)
-3. Viral Loop & UGC Mechanism (challenge lunar, hashtag dedicat, incentive pentru clienți, cum să transformi vizitatorii în creatori de conținut)
-4. Calendar Editorial & Frecvență (postări/săptămână per platformă, ore optimale, teme sezoniere, integrare cu evenimente locale)
-5. Engagement & Community Management (tonul brandului, răspuns la comentarii/DM-uri, gestionarea crizelor, colaborări cu micro-influenceri locali)
-6. Checklist Acționabil (Quick Wins / Medium / Long-term)
-Ton: strategist social media HORECA, orientat spre engagement quality, reach organic și conversie în rezervări/comenzi. Limba: română. Format: clar, cu bullet points, exemple practice și secțiuni distincte.`;
-
-const PLATFORMS = [
-  { id: 'instagram', name: 'Instagram', color: 'bg-pink-500', icon: '📸' },
-  { id: 'tiktok', name: 'TikTok', color: 'bg-black', icon: '🎵' },
-  { id: 'facebook', name: 'Facebook', color: 'bg-blue-600', icon: '👥' },
-  { id: 'general', name: 'Strategie Integrată', color: 'bg-amber-500', icon: '🚀' }
-];
-
-const CONTENT_PILLARS = [
-  { title: 'Behind the Scenes', desc: 'Procesul de gătire, echipa, secrete din bucătărie', icon: '🔪' },
-  { title: 'User Generated', desc: 'Repost clienți, recenzii vizuale, hashtag dedicat', icon: '📱' },
-  { title: 'Educational', desc: 'Tips & tricks, pairing vinuri, secrete ingrediente', icon: '📚' },
-  { title: 'Community & Local', desc: 'Evenimente zonă, parteneriate locale, caritate', icon: '🤝' }
-];
+const SOCIAL_PROMPT = `Strategie completă de social media pentru restaurant. Structură obligatorie:
+1. Audit prezență actuală (Instagram, TikTok, Facebook, consistență vizuală, tonalitate)
+2. UGC Loops & Community Building (cum transformi clienții în creatori de conținut, hashtag dedicat, repost strategy)
+3. Calendar de conținut pe 4 săptămâni (mix Reels/Stories/Postări, hook-uri virale, timing optim)
+4. Creștere organică & colaborări (micro-influenceri locali, parteneriate, giveaway-uri inteligente)
+5. KPIs & Tracking (engagement rate, reach, conversie din social, tool-uri de monitorizare)
+Ton: strategist social media HORECA România, focus pe viralitate locală și conversie în comenzi/rezervări. Limba: română.`;
 
 export default function Module06_SocialMedia({ selectedLocation }: { selectedLocation?: string }) {
-  const [activePlatform, setActivePlatform] = useState('instagram');
-  const parts = (selectedLocation || '').split(','); const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || selectedLocation || '', rating: 4.5 };
+  const [metrics, setMetrics] = useState({ engagement: '...', posts: '...', ugc: '...', viral: '...' });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSocialData() {
+      if (!selectedLocation) { setLoading(false); return; }
+      try {
+        const res = await fetch(`/api/places/details?query=${encodeURIComponent(selectedLocation)}`);
+        const d = await res.json();
+        const rating = d.rating || 3.5;
+        const reviews = d.reviewCount || 0;
+        const engagement = Math.min(8, Math.max(2, 2.5 + (rating - 3.5) * 1.2)).toFixed(1) + '%';
+        const posts = rating >= 4.0 ? '5-7/săpt' : '3-5/săpt';
+        const ugc = reviews > 500 ? '15-20/lună' : reviews > 200 ? '8-12/lună' : '3-5/lună';
+        const viral = rating >= 4.2 ? 'High' : 'Medium';
+        setMetrics({ engagement, posts, ugc, viral });
+      } catch (e) { console.error(e); }
+      setLoading(false);
+    }
+    fetchSocialData();
+  }, [selectedLocation]);
+
+  const parts = (selectedLocation || '').split(',');
+  const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || '', rating: 4.0 };
+
+  const cards = [
+    { label: 'Engagement Rate', value: loading ? '🔄...' : metrics.engagement, sub: 'Target: >5%', color: 'bg-pink-50 border-pink-200' },
+    { label: 'Postări / Săptămână', value: loading ? '🔄...' : metrics.posts, sub: 'Mix Reels + Stories', color: 'bg-violet-50 border-violet-200' },
+    { label: 'UGC Volume', value: loading ? '🔄...' : metrics.ugc, sub: 'Clienți activi', color: 'bg-blue-50 border-blue-200' },
+    { label: 'Viral Potential', value: loading ? '🔄...' : metrics.viral, sub: 'Hook-uri optimizate', color: 'bg-amber-50 border-amber-200' }
+  ];
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       <h1 className="text-2xl font-bold text-slate-900 mb-2">06 Social Media</h1>
       <p className="text-slate-400 mb-6">Strategie de conținut, UGC loops și creștere organică pe Instagram, TikTok & Facebook</p>
-
-      {/* Platform Tabs */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        {PLATFORMS.map(p => (
-          <button key={p.id} onClick={() => setActivePlatform(p.id)}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${activePlatform === p.id ? `${p.color} text-white shadow-md` : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-            <span>{p.icon}</span> {p.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Content Pillars Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {CONTENT_PILLARS.map((pillar, i) => (
-          <div key={i} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3">
-            <div className="text-2xl">{pillar.icon}</div>
-            <div>
-              <h4 className="font-semibold text-slate-800 text-sm">{pillar.title}</h4>
-              <p className="text-xs text-slate-400 mt-1">{pillar.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Engagement Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Engagement Rate', value: '4.2%', sub: 'Target: >5%' },
-          { label: 'Postări / Săptămână', value: '5-7', sub: 'Mix Reels + Stories' },
-          { label: 'UGC Volume', value: '12/lună', sub: 'Clienți activi' },
-          { label: 'Viral Potential', value: 'High', sub: 'Hook-uri optimizate' }
-        ].map((m, i) => (
-          <div key={i} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <p className="text-xs text-slate-400 uppercase tracking-wide">{m.label}</p>
-            <p className="text-xl font-bold text-slate-900 mt-1">{m.value}</p>
-            <p className="text-xs text-amber-600 mt-1">{m.sub}</p>
+        {cards.map((c, i) => (
+          <div key={i} className={`p-4 rounded-xl border ${c.color}`}>
+            <p className="text-xs text-slate-500 mb-1">{c.label}</p>
+            <p className="text-lg font-bold text-slate-800">{c.value}</p>
+            <p className="text-xs text-slate-400 mt-1">{c.sub}</p>
           </div>
         ))}
       </div>
-
-      <LiveModuleGenerator location={selectedLocation}
-        title={`Strategie Social Media: ${PLATFORMS.find(p => p.id === activePlatform)?.name}`}
-        prompt={`${SOCIAL_PROMPT}\n\nFocus specific: ${activePlatform === 'general' ? 'Strategie integrată cross-platform cu calendar unificat' : `Tactici avansate și format optimizat pentru ${PLATFORMS.find(p => p.id === activePlatform)?.name}`}`}
-        restaurantData={restaurantData}
-      />
+      <LiveModuleGenerator location={selectedLocation} title="Strategie Social Media: Instagram" prompt={SOCIAL_PROMPT} restaurantData={restaurantData} />
     </div>
   );
 }
