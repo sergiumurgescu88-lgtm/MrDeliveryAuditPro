@@ -120,7 +120,7 @@ app.get('/api/places/details', async (req, res) => {
     if (!placeId) return res.status(404).json({ error: 'Restaurant negăsit' });
 
     // Step 2: Get details
-    const fields = 'name,rating,user_ratings_total,formatted_address,website,formatted_phone_number,opening_hours,price_level,types,reviews,editorial_summary';
+    const fields = 'name,rating,user_ratings_total,formatted_address,website,formatted_phone_number,opening_hours,price_level,types,reviews,editorial_summary,photos';
     const detailUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&language=ro&key=${GMAPS_KEY}`;
     const detailRes = await fetch(detailUrl);
     const detailData = await detailRes.json() as any;
@@ -145,6 +145,7 @@ app.get('/api/places/details', async (req, res) => {
         time: r.relative_time_description
       })),
       summary: p.editorial_summary?.overview || null,
+      photos: (p.photos || []).slice(0, 6).map((ph: any) => `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ph.photo_reference}&key=${GMAPS_KEY}`),
       placeId
     };
 
