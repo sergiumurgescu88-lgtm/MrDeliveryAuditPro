@@ -43,7 +43,7 @@ app.post('/api/audit/stream', async (req, res) => {
         max_tokens: 1500,
         temperature: 0.4,
         messages: [
-          { role: 'system', content: 'Consultant HORECA senior. Răspuns concis, acționabil, specific România. Max 600 cuvinte. Structură: Analiză, Recomandări, KPIs, Quick Wins.' },
+          { role: 'system', content: 'Ești consultant HORECA senior pentru România. OBLIGATORIU: Folosește EXCLUSIV datele din JSON-ul primit (nume, adresă, rating, recenzii, telefon, website). NU inventa date, NU folosi alte restaurante. Dacă un câmp lipsește, menționează că nu este disponibil public. Răspuns: max 600 cuvinte, structurat, acționabil, specific localității menționate în date.' },
           { role: 'user', content: `${prompt}\n\nDate: ${JSON.stringify(restaurantData)}` }
         ]
       })
@@ -103,4 +103,55 @@ app.listen(PORT, () => {
   console.log(`✅ Backend running on port ${PORT}`);
   console.log(`🔑 OpenRouter: ${OPENROUTER_KEY ? 'Loaded (' + OPENROUTER_KEY.slice(0,12) + '...)' : 'MISSING'}`);
   console.log(`📧 Resend: ${RESEND_KEY ? 'Active' : 'MISSING'}`);
+});
+
+// 🗺️ Google Places - date reale restaurant
+app.get('/api/places/details', async (req, res) => {
+  const { query } = req.query as { query: string };
+  const GMAPS_KEY = process.env.GOOGLE_MAPS_API_KEY || '';
+  if (!query) return res.status(400).json({ error: 'Query missing' });
+
+  try {
+    // Step 1: Find place_id
+    const findUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(query)}&inputtype=textquery&fields=place_id,name&key=${GMAPS_KEY}`;
+    const findRes = await fetch(findUrl);
+    const findData = await findRes.json() as any;
+    const placeId = findData.candidates?.[0]?.place_id;
+    if (!placeId) return res.status(404).json({ error: 'Restaurant negăsit' });
+
+    // Step 2: Get details
+    const fields = 'name,rating,user_ratings_total,formatted_address,website,formatted_phone_number,opening_hours,price_level,types,reviews,editorial_summary';
+    const detailUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&language=ro&key=${GMAPS_KEY}`;
+    const detailRes = await fetch(detailUrl);
+    const detailData = await detailRes.json() as any;
+    const p = detailData.result;
+    if (!p) return res.status(404).json({ error: 'Detalii negăsite' });
+
+    // Step 3: Formatăm răspunsul
+    const result = {
+      name: p.name || query,
+      rating: p.rating || null,
+      reviewCount: p.user_ratings_total || 0,
+      address: p.formatted_address || '',
+      website: p.website || null,
+      phone: p.formatted_phone_number || null,
+      priceLevel: p.price_level || null, // 1-4
+      types: p.types || [],
+      isOpenNow: p.opening_hours?.open_now ?? null,
+      openingHours: p.opening_hours?.weekday_text || [],
+      recentReviews: (p.reviews || []).slice(0, 3).map((r: any) => ({
+        rating: r.rating,
+        text: r.text?.slice(0, 200),
+        time: r.relative_time_description
+      })),
+      summary: p.editorial_summary?.overview || null,
+      placeId
+    };
+
+    console.log(`✅ Places data: ${result.name} | ${result.rating}⭐ | ${result.reviewCount} reviews`);
+    res.json(result);
+  } catch (err: any) {
+    console.error('❌ Places Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });

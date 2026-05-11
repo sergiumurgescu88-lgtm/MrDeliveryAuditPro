@@ -2,6 +2,14 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { logAudit } from '../lib/dataLogger';
 
+interface PlacesData {
+  name: string; rating: number | null; reviewCount: number; address: string;
+  website: string | null; phone: string | null; priceLevel: number | null;
+  types: string[]; isOpenNow: boolean | null; openingHours: string[];
+  recentReviews: { rating: number; text: string; time: string }[];
+  summary: string | null; placeId: string;
+}
+
 interface Props { title: string; prompt: string; restaurantData: any; location?: string; }
 
 export default function LiveModuleGenerator({ title, prompt, restaurantData, location }: Props) {
@@ -10,15 +18,25 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
-  
+  const [placesData, setPlacesData] = useState<PlacesData | null>(null);
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
+
   useEffect(() => {
-    setDisplayedText('');
-    setProgress(0);
-    setError(null);
-    setIsComplete(false);
+    setDisplayedText(''); setProgress(0); setError(null);
+    setIsComplete(false); setPlacesData(null);
     if (abortControllerRef.current) abortControllerRef.current.abort();
     setIsGenerating(false);
     queueRef.current = [];
+  }, [location]);
+
+  // Fetch date reale Google Places
+  useEffect(() => {
+    if (!location) return;
+    setLoadingPlaces(true);
+    fetch(`/api/places/details?query=${encodeURIComponent(location)}`)
+      .then(r => r.json())
+      .then(data => { setPlacesData(data); setLoadingPlaces(false); })
+      .catch(() => setLoadingPlaces(false));
   }, [location]);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -63,10 +81,27 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
     queueRef.current = []; totalItemsRef.current = 0; processedItemsRef.current = 0;
     streamEndedRef.current = false; abortControllerRef.current = new AbortController();
 
+    // Construim restaurantData îmbogățit cu date reale
+    const enrichedData = placesData ? {
+      name: placesData.name,
+      address: placesData.address,
+      rating: placesData.rating,
+      reviewCount: placesData.reviewCount,
+      website: placesData.website,
+      phone: placesData.phone,
+      priceLevel: placesData.priceLevel,
+      cuisine: placesData.types.filter(t => !['establishment','food','point_of_interest'].includes(t)).join(', '),
+      isOpenNow: placesData.isOpenNow,
+      openingHours: placesData.openingHours,
+      recentReviews: placesData.recentReviews,
+      summary: placesData.summary,
+    } : { ...restaurantData, name: location?.split(',')[0]?.trim() || restaurantData?.name };
+
     try {
       const res = await fetch('/api/audit/stream', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, restaurantData }), signal: abortControllerRef.current.signal
+        body: JSON.stringify({ prompt, restaurantData: enrichedData }),
+        signal: abortControllerRef.current.signal
       });
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const reader = res.body?.getReader(); const decoder = new TextDecoder(); let buffer = '';
@@ -101,7 +136,18 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 mb-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
+        <div>
+          <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
+          {placesData && (
+            <div className="flex flex-wrap gap-2 mt-1">
+              <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">⭐ {placesData.rating} ({placesData.reviewCount} recenzii)</span>
+              {placesData.website && <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">🌐 Website activ</span>}
+              {placesData.isOpenNow !== null && <span className={`text-xs px-2 py-0.5 rounded-full border ${placesData.isOpenNow ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>{placesData.isOpenNow ? '🟢 Deschis acum' : '🔴 Închis acum'}</span>}
+              {loadingPlaces && <span className="text-xs text-slate-400">⏳ Se încarcă date reale...</span>}
+            </div>
+          )}
+          {loadingPlaces && !placesData && <p className="text-xs text-amber-600 mt-1">⏳ Se preiau date reale Google...</p>}
+        </div>
         <button onClick={() => isGenerating ? abortControllerRef.current?.abort() : handleGenerate()} disabled={!location}
           className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${!location ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : isGenerating ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100' : 'bg-amber-500 text-white hover:bg-amber-400 shadow-md shadow-amber-500/20'}`}>
           {isGenerating ? '⏹ Oprește' : '✨ Generează Live'}
