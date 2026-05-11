@@ -9,9 +9,7 @@ const cleanText = (text: string) => {
     .replace(/([\(\[{])\s+/g, '$1')
     .replace(/([a-zA-Z])\s+([ăâîșțĂÂÎȘȚ])/g, '$1$2')
     .replace(/(\d)\s+(\d)/g, '$1$2')
-    .replace(/([a-zA-ZăâîșțĂÂÎȘȚ])\s+(re|te|de|le|me|ne|se|ze|ce|ge|ri|li|ni|si|ti|mi|vi|bi|pi|fi|hi|ji|ul|il|el|al|or|ar|er|ir|at|it|ut|et|ot|ea|ia|ua|oa|ie|ii|ei|ai|oi|ui)/gi, '$1$2')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+    .replace(/\s{2,}/g, ' ');
 };
 
 
