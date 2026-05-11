@@ -11,7 +11,7 @@ const MODULE_NAMES: Record<string, string> = {
   '10_Growth': '10 Growth'
 };
 
-export default function Module00_Dashboard({ selectedLocation, restaurantData }: { selectedLocation?: string; restaurantData?: any }) {
+export default function Module00_Dashboard({ restaurantData }: { restaurantData?: any }) {
   const { results, completedCount, resetAudit } = useAudit();
   const { runFullAudit, isGenerating } = useFullAudit();
   const [expanded, setExpanded] = useState<string | null>(null);
