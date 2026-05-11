@@ -1,94 +1,81 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 
-const WEBSITE_PROMPT = `Generează un audit complet pentru website-ul și sistemul de comenzi online al unui restaurant. Structură obligatorie:
-1. Analiză UX & Conversie (identifică 3 puncte de fricțiune în user journey, estimare rată de conversie, recomandări de optimizare)
-2. Audit Tehnic & Performanță (Core Web Vitals, viteză încărcare mobil, SSL, structură URL, compatibilitate browsere)
-3. Optimizare Funnel de Comandă (pași: Vizită → Meniu → Coș → Checkout → Confirmare, cum să reduci abandonul cu 20-30%)
-4. Schema.org & SEO Tehnic (LocalBusiness, Menu, FAQ, breadcrumbs, rich snippets pentru rețete/prețuri)
-5. Strategii de Retenție & AI Personalization (exit-intent popup, recomandări dinamice bazate pe oră/weather/istoric, loyalty integration)
-6. Checklist Acționabil (prioritizat: Quick Wins / Medium / Long-term)
-Ton: expert în UX/UI, conversion rate optimization și e-commerce food delivery. Limba: română. Format: clar, cu bullet points, metrici estimative și secțiuni distincte.`;
+const WEBSITE_PROMPT = `Audit tehnic & UX pentru website-ul restaurantului. Structură obligatorie:
+1. Performanță tehnică (viteză, Core Web Vitals, mobil vs desktop)
+2. Funnel de conversie (vizitatori → meniu → coș → checkout)
+3. SEO tehnic (Schema.org, meta tags, indexare, SSL)
+4. Optimizare comenzi online (UX coș, upsell, exit-intent, guest checkout)
+5. Recomandări prioritizate (Quick Wins / Medium / Long-term)
+Ton: expert UX & performance marketing, date acționabile, focus pe conversie. Limba: română.`;
 
 export default function Module04_WebsiteOrdering({ selectedLocation }: { selectedLocation?: string }) {
-  const [uxScore] = useState(58);
-  const parts = (selectedLocation || '').split(','); const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || selectedLocation || '', rating: 4.5 };
+  const [metrics, setMetrics] = useState({ speed: '...', mobile: 'Verificare...', ssl: 'Verificare...', schema: 'Verificare...' });
+  const [loading, setLoading] = useState(true);
+  const [website, setWebsite] = useState<string | null>(null);
 
-  const funnelSteps = [
-    { label: 'Vizitatori', value: '100%', drop: 0 },
-    { label: 'Vizualizare Meniu', value: '68%', drop: 32 },
-    { label: 'Adăugare în Coș', value: '24%', drop: 44 },
-    { label: 'Checkout', value: '12%', drop: 12 },
-    { label: 'Comandă Finalizată', value: '8%', drop: 4 }
+  useEffect(() => {
+    async function fetchSiteData() {
+      if (!selectedLocation) { setLoading(false); return; }
+      try {
+        const res = await fetch(`/api/places/details?query=${encodeURIComponent(selectedLocation)}`);
+        const d = await res.json();
+        const url = d.website;
+        setWebsite(url);
+        if (!url) {
+          setMetrics({ speed: 'N/A', mobile: 'N/A', ssl: 'N/A', schema: 'N/A' });
+          setLoading(false);
+          return;
+        }
+        // PageSpeed Insights API (free, no key, CORS enabled)
+        const psUrl = `https://pagespeedonline.googleapis.com/pagespeedonline/v5?url=${encodeURIComponent(url)}&category=PERFORMANCE&strategy=mobile`;
+        const psRes = await fetch(psUrl);
+        const psData = await psRes.json();
+        const score = psData?.lighthouseResult?.categories?.performance?.score ?? null;
+        const speedScore = score ? Math.round(score * 100) : null;
+        setMetrics({
+          speed: speedScore !== null ? `${speedScore}/100` : 'Eroare scan',
+          mobile: speedScore !== null ? (speedScore >= 50 ? '✅ Optimizat' : '⚠️ Necesită fix') : 'N/A',
+          ssl: url.startsWith('https') ? '✅ Activ' : '❌ Inactiv',
+          schema: '⚠️ Verificare AI'
+        });
+      } catch (e) {
+        console.error(e);
+        setMetrics({ speed: 'Eroare', mobile: 'Eroare', ssl: 'Eroare', schema: 'Eroare' });
+      }
+      setLoading(false);
+    }
+    fetchSiteData();
+  }, [selectedLocation]);
+
+  const parts = (selectedLocation || '').split(',');
+  const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || '', website, rating: 4.0 };
+
+  const cards = [
+    { label: 'PageSpeed Mobile', value: loading ? '🔄...' : metrics.speed, sub: 'Target: 80+', color: 'bg-blue-50 border-blue-200' },
+    { label: 'Mobile UX', value: loading ? '🔄...' : metrics.mobile, sub: 'Responsive & tap targets', color: 'bg-emerald-50 border-emerald-200' },
+    { label: 'SSL Certificate', value: loading ? '🔄...' : metrics.ssl, sub: 'HTTPS obligatoriu', color: 'bg-violet-50 border-violet-200' },
+    { label: 'Schema.org', value: loading ? '🔄...' : metrics.schema, sub: 'Restaurant markup', color: 'bg-amber-50 border-amber-200' }
   ];
-
-  const techChecklist = [
-    { item: 'Mobile Responsive', status: 'ok' },
-    { item: 'SSL Certificate', status: 'ok' },
-    { item: 'Core Web Vitals (LCP < 2.5s)', status: 'warn' },
-    { item: 'Schema.org Markup', status: 'missing' },
-    { item: 'Page Speed > 80/100', status: 'warn' },
-    { item: 'Exit-Intent Popup', status: 'missing' }
-  ];
-
-  const circumference = 2 * Math.PI * 40;
-  const strokeDashoffset = circumference - (uxScore / 100) * circumference;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       <h1 className="text-2xl font-bold text-slate-900 mb-2">04 Website & Ordering</h1>
       <p className="text-slate-400 mb-6">Audit UX, conversie, performanță tehnică și optimizare comenzi online</p>
-
-      {/* UX Score Ring + Funnel */}
-      <div className="flex flex-col md:flex-row gap-6 mb-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center min-w-[160px]">
-          <div className="relative w-24 h-24">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="40" stroke="#e5e7eb" strokeWidth="8" fill="none" />
-              <circle cx="50" cy="50" r="40" stroke="#f59e0b" strokeWidth="8" fill="none"
-                strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-2xl font-bold text-slate-900">{uxScore}</span>
-            </div>
-          </div>
-          <p className="text-sm font-medium text-slate-500 mt-2">UX Score</p>
-          <p className="text-xs text-amber-600">Target: 85+</p>
-        </div>
-
-        <div className="flex-1 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4">Conversion Funnel Estimativ</h3>
-          <div className="space-y-3">
-            {funnelSteps.map((step, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-32 text-xs text-slate-500">{step.label}</div>
-                <div className="flex-1 bg-slate-100 rounded-full h-6 overflow-hidden relative">
-                  <div className="bg-amber-500 h-full rounded-full flex items-center justify-end pr-2 transition-all duration-500"
-                    style={{ width: step.value }}>
-                    <span className="text-xs font-medium text-white">{step.value}</span>
-                  </div>
-                </div>
-                {step.drop > 0 && <span className="text-xs text-red-500 font-medium">-{step.drop}%</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Technical Checklist */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-        {techChecklist.map((c, i) => (
-          <div key={i} className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${
-            c.status === 'ok' ? 'bg-green-50 border-green-200 text-green-700' :
-            c.status === 'warn' ? 'bg-amber-50 border-amber-200 text-amber-700' :
-            'bg-red-50 border-red-200 text-red-700'
-          }`}>
-            <span>{c.status === 'ok' ? '✅' : c.status === 'warn' ? '⚠️' : '❌'}</span>
-            {c.item}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {cards.map((c, i) => (
+          <div key={i} className={`p-4 rounded-xl border ${c.color}`}>
+            <p className="text-xs text-slate-500 mb-1">{c.label}</p>
+            <p className="text-lg font-bold text-slate-800">{c.value}</p>
+            <p className="text-xs text-slate-400 mt-1">{c.sub}</p>
           </div>
         ))}
       </div>
-
+      {!website && !loading && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 mb-4">
+          ⚠️ Restaurantul nu are website public în Google Maps. Auditul se va baza pe recomandări standard.
+        </div>
+      )}
       <LiveModuleGenerator location={selectedLocation} title="Audit Website & Ordering" prompt={WEBSITE_PROMPT} restaurantData={restaurantData} />
     </div>
   );

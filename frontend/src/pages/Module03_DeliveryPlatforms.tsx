@@ -1,66 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
-import { usePlacesData, getAOV, getRatingTarget } from '../hooks/usePlacesData';
 
-const DELIVERY_PROMPT = `Generează o analiză strategică detaliată pentru optimizarea prezenței unui restaurant pe platformele de delivery (Glovo, Bolt Food, Wolt). Structură obligatorie:
-1. Analiza Platformelor (comisioane tipice, vizibilitate în app, UX listing, review aggregation)
-2. Adaptarea Meniului per Platformă (Glovo=viteză&freshness, Bolt=value&combos, Wolt=premium&experiență)
-3. Matrice ROI & Comisioane (calcul estimativ: Avg Order Value × Conversion Rate × Margin % ÷ Commission %)
-4. Strategii de Promovare & Retenție (promoții exclusive, first-order discount, loyalty loops, packaging branding)
-5. Dynamic Pricing & Promo Engine (reguli automate bazate pe weather, traffic, ore de vârf)
-6. Checklist Acționabil (prioritizat: Quick Wins / Medium / Long-term)
-Ton: expert în food delivery & growth hacking, orientat spre profitabilitate și conversie. Limba: română. Format: clar, cu bullet points, tabele simple și secțiuni distincte.`;
-
-const PLATFORMS = [
-  { id: 'glovo', name: 'Glovo', color: 'bg-green-500', icon: '🟢' },
-  { id: 'bolt', name: 'Bolt Food', color: 'bg-green-700', icon: '🟩' },
-  { id: 'wolt', name: 'Wolt', color: 'bg-blue-500', icon: '🔵' },
-  { id: 'general', name: 'Strategie Generală', color: 'bg-amber-500', icon: '📊' }
-];
+const DELIVERY_PROMPT = `Analiză completă delivery pentru restaurant. Structură obligatorie:
+1. Comisioane Glovo/Bolt/Tazz & negociere
+2. AOV real vs target, optimizare coș mediu
+3. Rata de conversie pe platforme & funnel optimizat
+4. ROI estimat & prag de rentabilitate
+5. Strategie de creștere (promoții, bundle-uri, loyalty, timing)
+Ton: consultant delivery România, date acționabile, focus pe profitabilitate. Limba: română.`;
 
 export default function Module03_DeliveryPlatforms({ selectedLocation }: { selectedLocation?: string }) {
-  const [activePlatform, setActivePlatform] = useState('glovo');
-  const { data: places, loading } = usePlacesData(selectedLocation);
+  const [metrics, setMetrics] = useState({ aov: '50-70 RON', conv: '2.8%', roi: '6.5/10', commission: '25-30%' });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchMetrics() {
+      if (!selectedLocation) { setLoading(false); return; }
+      try {
+        const res = await fetch(`/api/places/details?query=${encodeURIComponent(selectedLocation)}`);
+        const d = await res.json();
+        const rating = d.rating || 3.5;
+        const reviews = d.reviewCount || 0;
+        const pl = d.priceLevel;
+        const aovMap: Record<number, string> = { 1: '35-45 RON', 2: '45-65 RON', 3: '70-90 RON', 4: '95+ RON' };
+        const aov = pl ? aovMap[pl] : '50-70 RON';
+        const conv = Math.min(6, Math.max(2, 2.5 + (rating - 3.5) * 0.6)).toFixed(1) + '%';
+        const roi = Math.min(10, 5 + (rating / 5) * 2.5 + (reviews > 300 ? 1 : 0)).toFixed(1) + '/10';
+        setMetrics({ aov, conv, roi, commission: '25-30%' });
+      } catch (e) { console.error(e); }
+      setLoading(false);
+    }
+    fetchMetrics();
+  }, [selectedLocation]);
+
   const parts = (selectedLocation || '').split(',');
-  const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || selectedLocation || '', rating: places?.rating || 4.5 };
+  const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || '', rating: 4.0 };
 
-  const aov = getAOV(places?.priceLevel ?? null);
-  const roiScore = places?.rating ? (places.rating * 1.8).toFixed(1) + '/10' : '7.4/10';
-  const ratingTarget = getRatingTarget(places?.rating ?? null);
-
-  const metrics = [
-    { label: 'Comision Estimat', value: '25-30%', sub: 'Glovo/Bolt/Wolt standard RO' },
-    { label: 'Avg Order Value', value: loading ? '...' : aov, sub: `Target: +15% → ${aov.split('-')[1] || aov}` },
-    { label: 'Rating pe Maps', value: loading ? '...' : places?.rating ? `${places.rating} ⭐` : 'N/A', sub: `Target: ${ratingTarget}` },
-    { label: 'ROI Score', value: loading ? '...' : roiScore, sub: 'Bazat pe rating & preț' },
+  const cards = [
+    { label: 'Comision Estimat', value: metrics.commission, sub: 'Variabil per platformă', color: 'bg-emerald-50 border-emerald-200' },
+    { label: 'Avg Order Value', value: loading ? '...' : metrics.aov, sub: 'Target: +15%', color: 'bg-blue-50 border-blue-200' },
+    { label: 'Conversion Rate', value: loading ? '...' : metrics.conv, sub: `Industry avg: 2.8%`, color: 'bg-amber-50 border-amber-200' },
+    { label: 'ROI Score', value: loading ? '...' : metrics.roi, sub: 'Bazat pe rating & volum', color: 'bg-violet-50 border-violet-200' }
   ];
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       <h1 className="text-2xl font-bold text-slate-900 mb-2">03 Delivery Platforms</h1>
-      <p className="text-slate-400 mb-6">Optimizare comisioane, conversie și strategii de creștere pe Glovo, Bolt & Wolt</p>
-      <div className="flex flex-wrap gap-3 mb-6">
-        {PLATFORMS.map(p => (
-          <button key={p.id} onClick={() => setActivePlatform(p.id)}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${activePlatform === p.id ? `${p.color} text-white shadow-md` : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-            <span>{p.icon}</span> {p.name}
-          </button>
-        ))}
-      </div>
+      <p className="text-slate-400 mb-6">Optimizare comisioane, conversie și strategii de creștere pe Glovo, Bolt & Tazz</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {metrics.map((m, i) => (
-          <div key={i} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <p className="text-xs text-slate-400 uppercase tracking-wide">{m.label}</p>
-            <p className="text-xl font-bold text-slate-900 mt-1">{m.value}</p>
-            <p className="text-xs text-amber-600 mt-1">{m.sub}</p>
+        {cards.map((c, i) => (
+          <div key={i} className={`p-4 rounded-xl border ${c.color}`}>
+            <p className="text-xs text-slate-500 mb-1">{c.label}</p>
+            <p className="text-lg font-bold text-slate-800">{c.value}</p>
+            <p className="text-xs text-slate-400 mt-1">{c.sub}</p>
           </div>
         ))}
       </div>
-      <LiveModuleGenerator location={selectedLocation}
-        title={`Analiză Delivery: ${PLATFORMS.find(p => p.id === activePlatform)?.name}`}
-        prompt={`${DELIVERY_PROMPT}\n\nFocus specific: ${activePlatform === 'general' ? 'Strategie integrată multi-platformă' : `Optimizare avansată pentru ${PLATFORMS.find(p => p.id === activePlatform)?.name}`}`}
-        restaurantData={restaurantData}
-      />
+      <LiveModuleGenerator location={selectedLocation} title="Analiză Delivery: Glovo/Bolt/Tazz" prompt={DELIVERY_PROMPT} restaurantData={restaurantData} />
     </div>
   );
 }

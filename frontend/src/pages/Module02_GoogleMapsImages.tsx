@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 
 const MAPS_IMAGES_PROMPT = `Generează un audit vizual complet pentru imaginile Google Maps ale unui restaurant. Structură obligatorie:
-1. Analiza Stării Actuale (calitate tehnică, relevanță, prospețime, diversitate cadre, frecvență upload)
+1. Analiza Stării Actuale (presupunem foto UGC standard pe Maps: iluminare slabă, cadre aglomerate, lipsă consistență. Focus pe oportunități de upgrade)
 2. Concept de Redesign Premium (direcție artistică tip Michelin, iluminare, mood, paletă cromatică)
 3. Shot List Profesional (5 cadre esențiale cu detalii tehnice: unghi, iluminare, compoziție, subiect, echipament recomandat)
 4. Calendar Vizual Trimestrial (teme sezoniere și evenimente locale pentru conținut foto recurent)
