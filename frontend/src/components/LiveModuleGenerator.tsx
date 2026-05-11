@@ -3,6 +3,14 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { logAudit } from '../lib/dataLogger';
 
+const cleanText = (text: string) => {
+  return text
+    .replace(/([a-zA-Z])\s+(â)/g, '$1$2')
+    .replace(/([a-zA-Z])\s+(ți)/g, '$1$2')
+    .replace(/([a-zA-ZăâîșțĂÂÎȘȚ])\s+(-)([a-zA-ZăâîșțĂÂÎȘȚ])/g, '$1$2$3');
+};
+
+
 interface PlacesData {
   name: string; rating: number | null; reviewCount: number; address: string;
   website: string | null; phone: string | null; priceLevel: number | null;
@@ -69,7 +77,7 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
       const item = queueRef.current.shift()!;
       const delay = streamEndedRef.current ? 300 : item.delay;
       await new Promise(r => setTimeout(r, delay));
-      setDisplayedText(prev => prev + item.text);
+      setDisplayedText(prev => cleanText(prev + item.text));
       processedItemsRef.current++;
       setProgress(Math.min((processedItemsRef.current / Math.max(totalItemsRef.current, 1)) * 95, 95));
     }
