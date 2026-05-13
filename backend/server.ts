@@ -364,8 +364,12 @@ app.get('/api/delivery/check', async (req: any, res: any) => {
   };
 
   // Slug din numele restaurantului: "Dum-Dum Food" -> "dum-dum-food"
-  const makeSlug = (name: string): string =>
-    name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+  const makeSlug = (name: string): string => {
+    return name.toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  };
 
   // Verifica daca slug-ul apare in URL (complet sau prin partile semnificative)
   const slugMatchesUrl = (slug: string, url: string): boolean => {
@@ -447,13 +451,15 @@ app.get('/api/social/find', async (req: any, res: any) => {
   const { name, city, website } = req.query as { name: string; city: string; website?: string };
   if (!name) return res.status(400).json({ error: 'Name missing' });
 
-  const slugDash = (s: string) => s.toLowerCase()
+  const slugDash = (s: string): string => {
+    return s.toLowerCase()
     .replace(/[ăâ]/g, 'a').replace(/[îí]/g, 'i')
     .replace(/[șşșş]/g, 's').replace(/[țţ]/g, 't')
     .replace(/[éè]/g, 'e')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  };
 
-  const sd = slugDash(name);
+  const sd = slugDash(decodeURIComponent(name));
   let fromWebsite: Record<string, string | null> = {};
 
   if (website) {
@@ -520,9 +526,9 @@ app.get('/api/localseo/rank', async (req: any, res: any) => {
         const nearR = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${loc.lat},${loc.lng}&radius=1000&type=restaurant&rankby=prominence&key=${GMAPS_KEY}`);
         const nearD = await nearR.json() as any;
         competitors = (nearD.results || [])
-          .filter((p: any) => p.name?.toLowerCase() !== name.toLowerCase())
-          .slice(0, 5)
-          .map((p: any) => p.name);
+        .filter((p: any) => p.name?.toLowerCase() !== name.toLowerCase())
+        .slice(0, 5)
+        .map((p: any) => p.name);
       }
     }
   } catch {}
@@ -620,11 +626,13 @@ app.get('/api/menu/dishes', async (req: any, res: any) => {
     }
 
     // 2. Concatenăm textele recenziilor
-    const reviewTexts = reviews
-      .map((r: any) => r.text || '')
-      .filter((t: string) => t.length > 20)
-      .slice(0, 10)
-      .join('\n---\n');
+    const reviewTexts = (() => {
+      return reviews
+        .map((r: any) => r.text || '')
+        .filter((t: string) => t.length > 20)
+        .slice(0, 10)
+        .join('\n---\n');
+    })();
 
     // 3. Gemini extrage preparatele
     const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
