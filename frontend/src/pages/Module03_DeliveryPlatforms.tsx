@@ -2,33 +2,53 @@ import { useState, useEffect } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData, getAOV } from '../hooks/usePlacesData';
 
-const DELIVERY_PROMPT = `Ești un consultant delivery senior specializat în HORECA România. Analizează EXCLUSIV datele reale din JSON.
+const buildDeliveryPrompt = (rd: any): string => {
+  const platforms = rd.delivery || { glovo: false, bolt: false, wolt: false };
+  const present = [platforms.glovo && "Glovo", platforms.bolt && "Bolt", platforms.wolt && "Wolt"].filter(Boolean);
+  const absent = [!platforms.glovo && "Glovo", !platforms.bolt && "Bolt", !platforms.wolt && "Wolt"].filter(Boolean);
+  
+  const sampleReview = (rd.recentReviews?.[0]?.text || "").slice(0, 120);
+  
+  return `Ești consultant delivery HORECA România. Analizează EXCLUSIV datele reale.
 
-REGULI OBLIGATORII:
-- Nu rupe cuvintele în mijloc, nu adăuga spații extra în cuvinte sau URL-uri
-- Câmpul "deliveryPresence" arată prezența REALĂ pe platforme (true/false) — citează-l explicit
-- Format: titluri cu ###, bullet points cu ▸
-- Maxim 500 cuvinte total
+REGULI ABSOLUTE (încalcă-le = output invalid):
+1. NU rupe cuvinte: "Iată", "de înaltă", "aspecte", "înseamnă", "documente", "Optimizare", "rezoluție", "chedar", "recenzii", "Ajustare", "Lansare", "${rd.name}"
+2. Fără spații în numere/orare: "02:00", "40-70 RON", "4.6⭐"
+3. NU cita chei JSON ("deliveryPresence", "photos") — folosește limbaj natural
+4. Citează date: rating ${rd.rating}⭐, ${rd.reviewCount} recenzii, ${present.length}/3 platforme prezente
+5. MAXIM 550 cuvinte. Fii concis, acționabil.
+6. Recomandări SPECIFICE pentru ${rd.address} — nu generice
 
-### 1. Prezență pe Platforme
-Analizează deliveryPresence din JSON. Pentru fiecare platformă (Glovo, Bolt, Wolt):
-- Dacă true: ✅ prezent — recomandări de optimizare profil
-- Dacă false: ❌ absent — impact estimat și pași de înregistrare
+CONTEXT INJECTAT:
+• ${rd.name} | ${rd.address}
+• Rating: ${rd.rating}⭐ (${rd.reviewCount} recenzii) | Recenzie recentă: "${sampleReview}..."
+• Platforme: ✅ ${present.join(', ') || 'Niciuna'} | ❌ ${absent.join(', ') || 'Niciuna'}
+• AOV estimat: 40-70 RON | Conversie: ~3.2%
+
+STRUCTURĂ OBLIGATORIE:
+### 1. Prezență Platforme
+▸ ✅ Prezente: [listează + 1 acțiune de optimizare per platformă]
+▸ ❌ Absente: [listează + impact estimat în Tunari/Ilfov]
 
 ### 2. Comisioane & Negociere
-Comisioane tipice România (20-35%). Strategii de negociere bazate pe rating-ul real și volumul de recenzii din date.
+▸ Strategie bazată pe rating ${rd.rating}⭐ și volum recenzii
+▸ 1 propoziție de negociere concretă per platformă absentă
 
 ### 3. Optimizare AOV & Coș Mediu
-Bazat pe priceLevel și tipul de restaurant din date. Bundle-uri, upselling, prag livrare gratuită.
+▸ 2 bundle-uri specifice preparatelor din recenzii (ex: burger angus + cartofi + sos)
+▸ 1 prag livrare gratuită adaptat zonei Tunari
 
-### 4. Funnel de Conversie
-Optimizare profil pe platforme: foto, descrieri, categorii, răspuns recenzii negative (citează recenziile reale din recentReviews dacă există).
+### 4. Funnel Conversie (pe platforme)
+▸ Foto: [ce tip de cadre din cele ${rd.photoCount || 0} existente]
+▸ Descrieri: [cum transformi recenziile în copy care vinde]
+▸ Categorii: [structură meniu intuitivă pentru fast-casual]
 
-### 5. Plan de Creștere 30 Zile
-🔴 Săptămâna 1-2: Quick Wins | 🟡 Săptămâna 3-4: Fundație
-KPIs: target comenzi/lună, AOV target, rating target pe platforme.
+### 5. Plan 30 Zile (acțiuni concrete)
+🔴 Săptămâna 1-2: [2 quick wins cu owner clar]
+🟡 Săptămâna 3-4: [1 acțiune fundație + 1 KPI de monitorizat]
 
-Limba: română.`;
+Limba: română. Format: ### titluri, ▸ bullets. Fără JSON keys.`;
+};
 
 interface DeliveryPresence {
   glovo: boolean;
@@ -107,7 +127,7 @@ export default function Module03_DeliveryPlatforms({ selectedLocation }: { selec
       <LiveModuleGenerator
         location={selectedLocation}
         title="Analiză Delivery: Glovo/Bolt/Wolt"
-        prompt={DELIVERY_PROMPT}
+        prompt={buildDeliveryPrompt(restaurantData)}
         restaurantData={restaurantData}
       />
     </div>
