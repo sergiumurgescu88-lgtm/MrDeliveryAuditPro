@@ -2,13 +2,46 @@ import { useState, useEffect } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData } from '../hooks/usePlacesData';
 
-const PHOTO_PROMPT = `Audit complet de identitate vizuală și strategie foto pentru restaurant. Structură obligatorie:
-1. Paletă cromatică & mood vizual (culori brand, temperatură lumină, stil recomandat)
-2. Shot list prioritar (8 cadre esențiale: hero dish, interior, echipă, proces, macro, exterior, packaging, UGC)
-3. Reguli de consistență vizuală (balans de alb, iluminare, fundaluri, crop, saturație)
-4. Strategie de conținut foto recurent (calendar lunar, surse UGC, drepturi de autor, storage)
-5. Impact asupra conversiei & SEO vizual (cum influențează pozele CTR-ul în Maps, delivery apps și website)
-Ton: director de creație & fotograf culinar HORECA, focus pe percepție premium și consistență brand. Limba: română.`;
+const buildPhotoPrompt = (rd: any): string => {
+  const photoStatus = rd.photoCount >= 10
+    ? `${rd.photoCount} poze (✅ suficiente)`
+    : rd.photoCount > 0
+    ? `${rd.photoCount} poze (⚠️ sub minim recomandat de 10)`
+    : "0 poze (❌ lipsă totală)";
+  const aiAnalysis = rd.photoAnalysis
+    ? `Analiză AI poze reale: "${rd.photoAnalysis}"`
+    : "Analiza AI a pozelor nu este disponibilă.";
+
+  return `Ești director de creație & fotograf culinar HORECA. Realizează un audit vizual complet pentru restaurantul **${rd.name}** (rating: ${rd.rating || "N/A"}/5, ${rd.reviewCount || "?"} recenzii).
+
+DATE REALE:
+- Poze pe Google Maps: ${photoStatus}
+- ${aiAnalysis}
+- Rating: ${rd.rating || "N/A"}/5
+
+STRUCTURĂ OBLIGATORIE:
+
+### 1. Paletă cromatică & mood vizual
+Bazat pe tipul localului și rating-ul ${rd.rating || "N/A"}, recomandă paleta cromatică, temperatura de lumină și stilul foto potrivit pentru **${rd.name}**.
+
+### 2. Shot list prioritar
+8 cadre esențiale cu descriere concretă: hero dish, interior ambianță, echipă, proces în bucătărie, macro ingredient, exterior/intrare, packaging, UGC. Prioritizează în funcție de ${photoStatus}.
+
+### 3. Reguli de consistență vizuală
+Balans de alb, iluminare naturală vs artificială, fundaluri recomandate, crop și aspect ratio pentru fiecare platformă (Maps, Instagram, delivery apps).
+
+### 4. Strategie conținut foto recurent
+Calendar lunar de producție foto. Cum colectezi UGC de la cei ${rd.reviewCount || "?"} recenzori. Drepturi de autor și storage organizat.
+
+### 5. Impact conversie & SEO vizual
+Cum influențează cele ${rd.photoCount} poze actuale CTR-ul în Maps și delivery apps. Estimare impact după optimizare la 20+ poze profesionale.
+
+REGULI OBLIGATORII:
+- Citează ÎNTOTDEAUNA datele reale (${rd.photoCount} poze, rating ${rd.rating}, analiza AI dacă există)
+- Nu rupe cuvintele în mijloc
+- Maxim 600 cuvinte total
+- Limba: română`;
+};
 
 export default function Module09_PhotoRedesign({ selectedLocation }: { selectedLocation?: string }) {
   const { data: placesData, loading: placesLoading } = usePlacesData(selectedLocation);
@@ -81,7 +114,7 @@ export default function Module09_PhotoRedesign({ selectedLocation }: { selectedL
         )}
       </div>
 
-      <LiveModuleGenerator location={selectedLocation} title="Audit Identitate Vizuală & Foto" prompt={PHOTO_PROMPT} restaurantData={restaurantData} />
+      <LiveModuleGenerator location={selectedLocation} title="Audit Identitate Vizuală & Foto" prompt={buildPhotoPrompt(restaurantData)} restaurantData={restaurantData} />
     </div>
   );
 }
