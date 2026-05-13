@@ -326,34 +326,144 @@ app.get('/api/website/audit', async (req: any, res: any) => {
 
 // ── Delivery Presence Check ───────────────────────────────────
 app.get('/api/delivery/check', async (req: any, res: any) => {
-  const { name } = req.query as { name: string };
+  const { name, lat, lon } = req.query as { name: string; lat?: string; lon?: string };
   if (!name) return res.status(400).json({ error: 'Name missing' });
+  const restaurantName = name.split(',')[0].trim();
+  const nameLower = restaurantName.toLowerCase().replace(/[^\w\s]/g, '');
+  const nameWords = nameLower.split(/\s+/).filter(w => w.length > 2);
+  const minMatches = Math.max(1, Math.ceil(nameWords.length * 0.6));
 
-  const cleanName = encodeURIComponent(name.split(',')[0].trim());
-  const check = async (url: string): Promise<boolean> => {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      const r = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MrDeliveryBot/1.0)' } });
-      clearTimeout(timeout);
-      const text = await r.text();
-      const lower = text.toLowerCase();
-      const restaurantLower = name.split(',')[0].trim().toLowerCase().substring(0, 10);
-      return r.ok && lower.includes(restaurantLower);
-    } catch { return false; }
+  const abortFetch = async (url: string, opts: any = {}, ms = 9000) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try { const r = await fetch(url, { ...opts, signal: ctrl.signal }); clearTimeout(t); return r; }
+    catch(e) { clearTimeout(t); throw e; }
   };
 
-  const [glovo, bolt, tazz] = await Promise.allSettled([
-    check(`https://glovoapp.com/ro/ro/bucuresti/search/?q=${cleanName}`),
-    check(`https://food.bolt.eu/ro-ro/1/category/restaurants?query=${cleanName}`),
-    check(`https://www.tazz.ro/bucuresti/search/${cleanName}`)
+  // Bolt Food SSR search + Bing site: ca fallback
+  const checkBolt = async (): Promise<boolean> => {
+    try {
+      // Metoda 1: Bolt SSR search page — verifica daca restaurantul apare in href (nu doar in URL query)
+      const cleanQ = encodeURIComponent(restaurantName);
+      const r = await abortFetch(`https://food.bolt.eu/ro-ro/325-bucharest/?search=${cleanQ}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'ro-RO,ro;q=0.9',
+          'Accept': 'text/html,application/xhtml+xml',
+        }
+      });
+      if (r.ok) {
+        const html = await r.text();
+        // Bolt SPA: cauta restaurant data in JSON embedded (window.__INITIAL_STATE__ sau similar)
+        // sau href catre pagina restaurantului care contine keywords
+        const lower = html.toLowerCase();
+        // Cauta pattern: /p/XXXXX-keyword in href — indica restaurant listing real
+        const hrefMatches = [...html.matchAll(/href="[^"]*\/p\/\d+-([^"]+)"/gi)];
+        for (const m of hrefMatches) {
+          const slug = m[1].toLowerCase().replace(/-/g,' ');
+          const kwHits = nameWords.filter(k => slug.includes(k)).length;
+          if (kwHits >= minMatches) {
+            console.log(`Bolt SSR href match: "${m[1]}"`);
+            return true;
+          }
+        }
+        // Fallback: JSON data embedded in page (unele SPA injecteaza initial state)
+        const jsonMatches = [...html.matchAll(/"name"\s*:\s*"([^"]+)"/gi)];
+        for (const m of jsonMatches) {
+          const vName = m[1].toLowerCase();
+          const kwHits = nameWords.filter(k => vName.includes(k)).length;
+          if (kwHits >= minMatches) {
+            console.log(`Bolt SSR JSON match: "${m[1]}"`);
+            return true;
+          }
+        }
+      }
+      // Metoda 2: Bing cu site:food.bolt.eu — verifica daca exista href real catre domeniu
+      const bingQ = encodeURIComponent(`${restaurantName} site:food.bolt.eu`);
+      const r2 = await abortFetch(`https://www.bing.com/search?q=${bingQ}&cc=RO&setlang=ro`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'ro-RO,ro;q=0.9,en;q=0.8',
+        }
+      });
+      if (!r2.ok) return false;
+      const html2 = await r2.text();
+      // Verificam href real (nu meta/title) — Bing pune result URL-urile in <a href="https://food.bolt.eu/...">
+      const hrefBolt = html2.match(/href="https:\/\/food\.bolt\.eu\/[^"]*\/p\/\d+[^"]*"/i);
+      if (hrefBolt) {
+        const url = hrefBolt[0].toLowerCase();
+        const kwHits = nameWords.filter(k => url.includes(k.replace(/\s+/g,'-'))).length;
+        console.log(`Bing Bolt site: href found: ${hrefBolt[0].substring(0,80)}, kw=${kwHits}`);
+        // Daca url-ul contine macar 1 keyword din nume = match valid
+        if (kwHits >= 1) return true;
+        // Altfel verifica in context HTML din jurul href-ului
+        const idx = html2.toLowerCase().indexOf(hrefBolt[0].toLowerCase().substring(6,40));
+        const ctx = html2.substring(Math.max(0, idx-200), idx+400).toLowerCase();
+        const ctxKw = nameWords.filter(k => ctx.includes(k)).length;
+        console.log(`Bing Bolt context kw=${ctxKw}/${nameWords.length}`);
+        return ctxKw >= minMatches;
+      }
+      console.log(`Bolt: no SSR match, no Bing href result`);
+      return false;
+    } catch(e: any) { console.log(`Bolt error: ${e.message}`); return false; }
+  };
+
+  // Glovo SSR — functioneaza direct
+  const checkGlovo = async (): Promise<boolean> => {
+    try {
+      const cleanQ = encodeURIComponent(restaurantName);
+      const r = await abortFetch(`https://glovoapp.com/ro/ro/bucharest/search/?q=${cleanQ}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept-Language': 'ro-RO,ro;q=0.9' }
+      });
+      if (!r.ok) return false;
+      const html = await r.text();
+      const found = nameWords.some(k => html.toLowerCase().includes(k));
+      console.log(`Glovo SSR "${restaurantName}": ${found}`);
+      return found;
+    } catch(e: any) { console.log(`Glovo error: ${e.message}`); return false; }
+  };
+
+  // Wolt JSON API — cu coordonatele reale ale restaurantului
+  const checkWolt = async (): Promise<boolean> => {
+    try {
+      const cleanQ = encodeURIComponent(restaurantName);
+      const latitude = lat ? parseFloat(lat) : 44.4268;
+      const longitude = lon ? parseFloat(lon) : 26.1025;
+      const r = await abortFetch(
+        `https://restaurant-api.wolt.com/v1/pages/restaurants?lat=${latitude}&lon=${longitude}&q=${cleanQ}`,
+        { headers: { 'Accept': 'application/json', 'App-Language': 'ro', 'User-Agent': 'Mozilla/5.0' } }
+      );
+      if (!r.ok) { console.log(`Wolt API: HTTP ${r.status}`); return bingSearch('wolt.com'); }
+      const data = await r.json() as any;
+      for (const section of (data?.sections || [])) {
+        for (const item of (section?.items || [])) {
+          const vName = (item?.venue?.name || item?.name || '').toLowerCase().replace(/[^\w\s]/g, '');
+          const vWords = vName.split(/\s+/).filter((w: string) => w.length > 2);
+          const match = nameWords.filter(k => vName.includes(k)).length;
+          if (match >= minMatches) {
+            console.log(`Wolt API match (${match}/${nameWords.length}): "${item?.venue?.name || item?.name}"`);
+            return true;
+          }
+        }
+      }
+      console.log(`Wolt API: no match, fallback to Bing`);
+      return bingSearch('wolt.com');
+    } catch(e: any) { console.log(`Wolt error: ${e.message}`); return bingSearch('wolt.com'); }
+  };
+
+  const [glovo, bolt, wolt] = await Promise.allSettled([
+    checkGlovo(),
+    checkBolt(),
+    checkWolt(),
   ]);
 
-  res.json({
+  const result = {
     glovo: glovo.status === 'fulfilled' ? glovo.value : false,
-    bolt: bolt.status === 'fulfilled' ? bolt.value : false,
-    tazz: tazz.status === 'fulfilled' ? tazz.value : false,
-  });
+    bolt:  bolt.status  === 'fulfilled' ? bolt.value  : false,
+    wolt:  wolt.status  === 'fulfilled' ? wolt.value  : false,
+  };
+  console.log(`Delivery check "${restaurantName}":`, result);
+  res.json(result);
 });
 
 // ── Social Media Find (Google Custom Search) ─────────────────
