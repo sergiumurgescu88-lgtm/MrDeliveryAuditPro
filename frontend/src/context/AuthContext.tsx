@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const client = window.google?.accounts.id;
     if (!client) return alert('Google SDK nu s-a încărcat. Reîncarcă pagina.');
     client.initialize({
-      client_id: 'YOUR_GOOGLE_CLIENT_ID',
+      client_id: '732798017063-ginkk970frfq8bj8okfa2ahir18dlo8g.apps.googleusercontent.com',
       callback: async (response: any) => {
         try {
           const res = await fetch('/api/auth/google', {

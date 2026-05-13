@@ -2,8 +2,27 @@ import authRoutes from "./auth";
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import Database from 'better-sqlite3';
+import path from 'path';
 
 dotenv.config({ path: '/var/www/mrdelivery.online/backend/.env' });
+
+
+// ── SQLite cache persistent ───────────────────────────────────
+const DB_PATH = path.join('/var/www/mrdelivery.online/backend', 'places_cache.db');
+const db = new Database(DB_PATH);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS places_cache (
+    query_key  TEXT PRIMARY KEY,
+    place_id   TEXT,
+    data       TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_expires ON places_cache(expires_at);
+`);
+// Cleanup intrări expirate la startup
+db.prepare('DELETE FROM places_cache WHERE expires_at < ?').run(Date.now());
+console.log('🗄️  SQLite cache inițializat:', DB_PATH);
 
 const app = express();
 app.use(cors());
@@ -98,8 +117,21 @@ app.get('/api/places/details', async (req, res) => {
   if (!query) return res.status(400).json({ error: 'Query missing' });
   if (!GMAPS_KEY) return res.status(500).json({ error: 'Maps API key missing' });
 
+  const cacheKey = query.trim().toLowerCase();
+
+  // ── Cache check SQLite ───────────────────────────────────────
   try {
-    // Încearcă cu query complet, apoi fallback la doar numele (înainte de virgulă)
+    const row = db.prepare('SELECT data, expires_at FROM places_cache WHERE query_key = ?').get(cacheKey) as any;
+    if (row && row.expires_at > Date.now()) {
+      console.log(`✅ Cache HIT: ${query}`);
+      return res.json(JSON.parse(row.data));
+    }
+    if (row) console.log(`⏰ Cache EXPIRED: ${query}`);
+  } catch (e) {
+    console.log('Cache read error (non-fatal):', e);
+  }
+
+  try {
     const removeDiacritics = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const tryFind = async (q: string) => {
       const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(q)}&inputtype=textquery&fields=place_id,name&key=${GMAPS_KEY}`;
@@ -121,24 +153,23 @@ app.get('/api/places/details', async (req, res) => {
       }
     }
     if (!placeId) {
-      // Fallback Gemini: extrage info din AI când Google Places eșuează
       console.log(`🤖 Gemini fallback pentru: "${query}"`);
       let geminiResult: any = null;
       try {
-          const prompt = `You are a Romanian restaurant expert. Return ONLY valid JSON (no markdown, no extra text) about: "${query}". Exact structure:
+        const prompt = `You are a Romanian restaurant expert. Return ONLY valid JSON (no markdown, no extra text) about: "${query}". Exact structure:
 {"name":"...","rating":null,"reviewCount":0,"address":"...","website":null,"phone":null,"priceLevel":null,"types":["restaurant"],"isOpenNow":null,"openingHours":[],"recentReviews":[],"summary":"short description","photos":[],"placeId":null,"fromGemini":true}
 Fill known fields, leave null/[] for unknown.`;
-          const gRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENROUTER_KEY}` },
-            body: JSON.stringify({ model: 'google/gemini-2.5-flash', messages: [{ role: 'user', content: prompt }], max_tokens: 500 })
-          });
-          const gData = await gRes.json() as any;
-          const raw = gData.choices?.[0]?.message?.content || '';
-          const cleaned = raw.replace(/```json|```/g, '').trim();
-          geminiResult = JSON.parse(cleaned);
-          console.log(`✅ OpenRouter Gemini găsit: ${geminiResult.name}`);
-        } catch(e) { console.log(`❌ OpenRouter fallback failed: ${e}`); }
+        const gRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENROUTER_KEY}` },
+          body: JSON.stringify({ model: 'google/gemini-2.5-flash', messages: [{ role: 'user', content: prompt }], max_tokens: 500 })
+        });
+        const gData = await gRes.json() as any;
+        const raw = gData.choices?.[0]?.message?.content || '';
+        const cleaned = raw.replace(/```json|```/g, '').trim();
+        geminiResult = JSON.parse(cleaned);
+        console.log(`✅ OpenRouter Gemini găsit: ${geminiResult.name}`);
+      } catch(e) { console.log(`❌ OpenRouter fallback failed: ${e}`); }
       if (geminiResult) return res.json(geminiResult);
       return res.status(200).json({ error: 'Restaurant negăsit', notFound: true });
     }
@@ -148,7 +179,7 @@ Fill known fields, leave null/[] for unknown.`;
     const p = detailData.result;
     if (!p) return res.status(200).json({ error: 'Detalii negăsite', notFound: true });
 
-    res.json({
+    const result = {
       name: p.name || query,
       rating: p.rating || null,
       reviewCount: p.user_ratings_total || 0,
@@ -167,11 +198,28 @@ Fill known fields, leave null/[] for unknown.`;
       summary: p.editorial_summary?.overview || null,
       photos: (p.photos || []).slice(0, 6).map((ph: any) => `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ph.photo_reference}&key=${GMAPS_KEY}`),
       placeId
-    });
+    };
+
+    // ── Cache write SQLite ───────────────────────────────────────
+    try {
+      const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+      db.prepare(`
+        INSERT INTO places_cache (query_key, place_id, data, expires_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(query_key) DO UPDATE SET
+          place_id=excluded.place_id, data=excluded.data, expires_at=excluded.expires_at
+      `).run(cacheKey, placeId, JSON.stringify(result), expiresAt);
+      console.log(`💾 Cache WRITE: ${query}`);
+    } catch (e) {
+      console.log('Cache write error (non-fatal):', e);
+    }
+
+    res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
+;
 
 // ── Website Audit (PageSpeed + SafeBrowsing) ─────────────────
 app.get('/api/website/audit', async (req: any, res: any) => {
