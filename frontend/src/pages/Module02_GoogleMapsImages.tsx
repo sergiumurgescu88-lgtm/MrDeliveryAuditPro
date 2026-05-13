@@ -2,31 +2,48 @@ import { useState, useEffect } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData } from '../hooks/usePlacesData';
 
-const MAPS_IMAGES_PROMPT = `Ești un director de creație și fotograf culinar HORECA cu 15 ani experiență în România. Analizează EXCLUSIV datele reale furnizate în JSON.
+const buildMapsImagesPrompt = (rd: any): string => {
+  const photoInsight = rd.photoAnalysis ? `Analiză Gemini Vision: "${rd.photoAnalysis}"` : "Analiză vizuală indisponibilă.";
+  const bizType = (rd.types || []).slice(0, 2).join(', ') || 'restaurant';
+  
+  return `Ești director de creație & fotograf culinar HORECA. Analizează EXCLUSIV datele reale.
 
-REGULI OBLIGATORII DE FORMATARE:
-- Nu rupe cuvintele în mijloc (ex: "consis tență" e greșit, "consistență" e corect)
-- Nu adăuga spații în URL-uri sau în interiorul cuvintelor
-- Dacă există câmpul "photoAnalysis" în date, citează-l explicit la început ca "Analiză Gemini Vision:"
-- Format: titluri cu ###, bullet points cu ▸
+REGULI ABSOLUTE (încalcă-le = output invalid):
+1. NU rupe cuvinte: "consistență", "fotografii", "clienții", "băuturi", "caldă", "f/2.8", "${rd.name}"
+2. Fără spații după puncte în numere: "4.6", nu "4. 6"
+3. Citează date: rating ${rd.rating}⭐, ${rd.reviewCount} recenzii, ${rd.photoCount} poze
+4. MAXIM 500 cuvinte. Fii concis, acționabil.
+5. Rămâi STRICT pe FOTOGRAFIE & VIZUAL. Ignoră website/SEO/livrare.
 
+CONTEXT INJECTAT:
+• ${rd.name} | ${rd.address}
+• Tip: ${bizType} | ${rd.rating}⭐ (${rd.reviewCount} recenzii)
+• ${photoInsight}
+
+STRUCTURĂ OBLIGATORIE:
 ### 1. Analiză Stare Actuală
-Începe cu: "Gemini Vision a identificat: [photoAnalysis din JSON]". Apoi extinde analiza pe baza numărului de poze (photoCount) și rating-ului.
+▸ ${photoInsight}
+▸ Impact photoCount (${rd.photoCount} vs min 10 Google)
+▸ Calitate bazată pe rating/recenzii
 
 ### 2. Concept Redesign Premium
-Direcție artistică specifică tipului de restaurant (fast-food/casual/fine-dining bazat pe types și priceLevel din date). Iluminare, mood, paletă cromatică.
+▸ Stil: [adaptat la ${bizType}]
+▸ Iluminare & Mood: [specific, fără generic]
+▸ Paletă cromatică: [culori care vând]
 
-### 3. Shot List Profesional
-5 cadre esențiale cu: unghi, iluminare, compoziție, subiect, echipament. Adaptate la tipul real de restaurant.
+### 3. Shot List Profesional (5 cadre)
+▸ Cadru 1-5: [Unghi, Iluminare, Subiect, Echipament]
 
 ### 4. Calendar Vizual Trimestrial
-Teme sezoniere specifice Bucureștiului și evenimentelor locale.
+▸ Q1-Q4: [Teme sezoniere HORECA]
 
 ### 5. Recomandări Prioritizate
-🔴 Critice | 🟡 Mediu termen | 🟢 Long-term
-Dacă photoCount < 10: marchează ca 🔴 CRITIC — sub minimul Google recomandat.
+🔴 Critice: [max 2, STRICT poze/GBP media]
+🟡 Mediu: [max 2]
+🟢 Long-term: [max 1]
 
-Limba: română. Fii specific și concis — maxim 600 cuvinte total.`;
+Limba: română. Format: ### titluri, ▸ bullets.`;
+};
 
 interface Photo { url: string; title: string; }
 
@@ -142,7 +159,7 @@ export default function Module02_GoogleMapsImages({ selectedLocation }: { select
       <LiveModuleGenerator
         location={selectedLocation}
         title="Analiză Foto Google Maps"
-        prompt={MAPS_IMAGES_PROMPT}
+        prompt={buildMapsImagesPrompt(restaurantData)}
         restaurantData={restaurantData}
       />
     </div>
