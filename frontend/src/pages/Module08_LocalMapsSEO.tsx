@@ -2,13 +2,51 @@ import { useState, useEffect } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData } from '../hooks/usePlacesData';
 
-const LOCALSEO_PROMPT = `Audit complet SEO Local & Google Business Profile pentru restaurant. Structură obligatorie:
-1. Optimizare GBP (categorie, descriere, atribute, Q&A, postări săptămânale)
-2. Citări locale & consistență NAP (Name, Address, Phone) pe directoare RO
-3. Dominanță în Local Pack (factori de ranking proximitate, recenzii, backlinks locali)
-4. Strategie de creștere vizibilitate (Google Posts, foto recurente, review velocity, UTM tracking)
-5. Checklist acționabil & KPIs lunari (impressions, direction requests, calls, website clicks)
-Ton: expert SEO local HORECA România, date acționabile, focus pe trafic fizic și comenzi. Limba: română.`;
+const buildLocalSeoPrompt = (rd: any): string => {
+  const seo = rd.seo || {};
+  const pos = seo.position ? `#${seo.position}` : "Necunoscut";
+  const competitors = seo.competitors?.length
+    ? seo.competitors.map((c: string, i: number) => `#${i+1} ${c}`).join(", ")
+    : "Necunoscuți";
+  const checklistStatus = [
+    seo.hasWebsite ? "✅ Website conectat" : "❌ Website lipsă",
+    seo.hasPhone ? "✅ Telefon verificat" : "❌ Telefon nelistat",
+    seo.hasHours ? "✅ Program complet" : "❌ Program incomplet",
+    seo.hasPhotos ? "✅ Fotografii prezente" : "❌ Fără fotografii",
+  ].join(" | ");
+
+  return `Ești expert SEO local HORECA România. Realizează un audit complet pentru restaurantul **${rd.name}** (rating: ${rd.rating || "N/A"}/5, ${rd.reviewCount || "?"} recenzii, adresă: ${rd.address || "N/A"}).
+
+DATE REALE GBP:
+- Poziție în Local Pack: ${pos}
+- Competitori detectați: ${competitors}
+- Website: ${rd.website || "Lipsă"}
+- Telefon: ${rd.phone || "Nelistat"}
+- Status GBP: ${checklistStatus}
+
+STRUCTURĂ OBLIGATORIE:
+
+### 1. Optimizare GBP
+Bazat pe statusul actual (${checklistStatus}), acțiuni concrete: categorie primară/secundare, descriere cu cuvinte cheie locale, atribute relevante, Q&A predefinit, postări săptămânale cu CTA.
+
+### 2. Citări locale & NAP
+Consistență Name/Address/Phone pe directoarele românești (Pagini Aurii, Romanian Business Register, TripAdvisor, Zomato). Detectează discrepanțe față de adresa reală: **${rd.address}**.
+
+### 3. Dominanță Local Pack
+Față de competitorii detectați (${competitors}): factori de ranking — proximitate, review velocity, backlinks locali. Cum urcă ${rd.name} de la ${pos} la Top 3.
+
+### 4. Strategie vizibilitate
+Google Posts săptămânale (format + CTA), foto recurente (frecvență, categorii), UTM tracking pentru calls/directions, review velocity target bazat pe ${rd.reviewCount || "?"} recenzii actuale.
+
+### 5. KPIs lunari
+Impressions, Direction Requests, Phone Calls, Website Clicks — valori target realiste pentru ${rd.name}.
+
+REGULI OBLIGATORII:
+- Citează ÎNTOTDEAUNA datele reale (rating ${rd.rating}, adresa exactă, poziția ${pos}, competitorii găsiți)
+- Nu rupe cuvintele în mijloc
+- Maxim 600 cuvinte total
+- Limba: română`;
+};
 
 interface SeoRank { position: number | null; query: string; competitors: string[]; }
 
@@ -116,7 +154,7 @@ export default function Module08_LocalMapsSEO({ selectedLocation }: { selectedLo
         </ul>
       </div>
 
-      <LiveModuleGenerator location={selectedLocation} title="Audit Local Maps SEO & GBP" prompt={LOCALSEO_PROMPT} restaurantData={restaurantData} />
+      <LiveModuleGenerator location={selectedLocation} title="Audit Local Maps SEO & GBP" prompt={buildLocalSeoPrompt(restaurantData)} restaurantData={restaurantData} />
     </div>
   );
 }
