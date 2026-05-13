@@ -1,14 +1,53 @@
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData, getRatingTarget, getReviewVelocity, getSentimentScore, extractKeywords } from '../hooks/usePlacesData';
 
-const REVIEWS_PROMPT = `Generează o strategie completă de optimizare a recenziilor și gestionare a reputației online pentru un restaurant. Structură obligatorie:
-1. Analiză Sentiment & Cuvinte Cheie (identifică top 5 termeni pozitivi și top 5 puncte de durere din recenzii, scor sentiment estimat, trend lunar)
-2. Framework de Răspuns (3 template-uri profesionale: recenzie pozitivă, neutră, negativă severă, cu ton empatic, soluții concrete și call-to-action de retenție)
-3. Sistem Proactiv de Generare Recenzii (SMS/email automat post-comandă, timing optim 2-4h, incentive-uri etice, link direct Google Maps, QR pe bon/packaging)
-4. Reputation Rescue Protocol (pași de urmat când rating-ul scade sub 4.2 sau apar recenzii negative virale, escaladare internă, monitorizare zilnică, recovery offers)
-5. Metrici de Urmărit & Benchmark (review velocity, response rate <24h, sentiment trend, impact asupra SEO local și conversie)
-6. Checklist Acționabil (Quick Wins / Medium / Long-term)
-Ton: expert în reputation management & customer experience HORECA. Limba: română. Format: clar, cu bullet points, exemple practice și secțiuni distincte.`;
+const buildReviewsPrompt = (rd: any): string => {
+  const reviewsList = rd.recentReviews?.length
+    ? rd.recentReviews.slice(0, 5).map((r: any) => `- ${r.rating}⭐: "${r.text?.slice(0, 120) || ''}"`).join("\n")
+    : "Recenzii reale indisponibile";
+  const kwPositive = rd.keywords?.filter((k: any) => k.sentiment === 'positive').map((k: any) => k.word).join(", ") || "N/A";
+  const kwNegative = rd.keywords?.filter((k: any) => k.sentiment === 'negative').map((k: any) => k.word).join(", ") || "N/A";
+
+  return `Ești expert în reputation management & customer experience HORECA. Realizează o strategie completă pentru restaurantul **${rd.name}** (rating Google: ${rd.rating || "N/A"}/5, ${rd.reviewCount || "?"} recenzii totale).
+
+DATE REALE:
+- Rating actual: ${rd.rating || "N/A"}/5 → Target recomandat: ${rd.ratingTarget}
+- Sentiment score: ${rd.sentimentScore}/100
+- Review velocity estimată: ${rd.reviewVelocity}
+- Cuvinte cheie pozitive din recenzii: ${kwPositive}
+- Cuvinte cheie negative din recenzii: ${kwNegative}
+
+Recenzii recente Google:
+${reviewsList}
+
+STRUCTURĂ OBLIGATORIE:
+
+### 1. Analiză Sentiment & Cuvinte Cheie
+Bazat pe recenziile reale de mai sus: top 5 termeni pozitivi, top 5 puncte de durere, trend și scor sentiment ${rd.sentimentScore}/100.
+
+### 2. Framework de Răspuns
+3 template-uri profesionale personalizate pentru **${rd.name}**: recenzie pozitivă, neutră, negativă severă. Ton empatic, soluții concrete, call-to-action de retenție.
+
+### 3. Sistem Proactiv de Generare Recenzii
+SMS/email automat post-comandă, timing optim 2-4h, incentive-uri etice, link direct Google Maps, QR pe bon/packaging. Obiectiv: creștere de la ${rd.reviewCount || "?"} la ${Math.round((rd.reviewCount || 100) * 1.5)} recenzii.
+
+### 4. Reputation Rescue Protocol
+Pași concreți când rating-ul scade sub 4.2 (actual: ${rd.rating || "N/A"}). Escaladare internă, monitorizare zilnică, recovery offers.
+
+### 5. Metrici & Benchmark
+Review velocity target vs actual (${rd.reviewVelocity}), response rate <24h, sentiment trend, impact SEO local.
+
+### 6. Checklist Acționabil
+▸ Quick Wins (această săptămână)
+▸ Medium-term (30 zile)
+▸ Long-term (90 zile)
+
+REGULI OBLIGATORII:
+- Citează ÎNTOTDEAUNA datele reale (rating ${rd.rating}, ${rd.reviewCount} recenzii, cuvintele cheie găsite)
+- Nu rupe cuvintele în mijloc
+- Maxim 650 cuvinte total
+- Limba: română`;
+};
 
 const RESPONSE_TEMPLATES = [
   { type: 'Pozitivă', color: 'bg-green-50 border-green-200 text-green-800', text: 'Vă mulțumim din suflet pentru apreciere! Ne bucurăm că ați savurat preparatele noastre. Vă așteptăm cu drag și data viitoare!' },
@@ -110,7 +149,7 @@ export default function Module07_ReviewsOptimization({ selectedLocation }: { sel
         ))}
       </div>
 
-      <LiveModuleGenerator location={selectedLocation} title="Audit Recenzii & Reputație" prompt={REVIEWS_PROMPT} restaurantData={restaurantData} />
+      <LiveModuleGenerator location={selectedLocation} title="Audit Recenzii & Reputație" prompt={buildReviewsPrompt(restaurantData)} restaurantData={restaurantData} />
     </div>
   );
 }
