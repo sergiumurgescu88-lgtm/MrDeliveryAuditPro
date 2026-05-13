@@ -2,13 +2,48 @@ import { useEffect, useState } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData } from '../hooks/usePlacesData';
 
-const MENU_PROMPT = `Audit complet de redesign meniu cu neuromarketing & profit engineering. Structură obligatorie:
-1. Analiza structurii actuale (categorii, aglomerare vizuală, lipsă ierarhie, prețuri nepsihologice)
-2. Transformare descrieri (Before → After) pentru 3 preparate cheie, folosind cuvinte senzoriale, storytelling și trigger-e de apetit
-3. Matrice de Profitabilitate (Stars, Puzzles, Plowhorses, Dogs) cu recomandări de repoziționare
-4. Psihologia prețurilor (ancorare, decoy, eliminare simbol valută, bundle-uri strategice)
-5. Layout & UX Meniu (regula triunghiului de aur, spațiere, highlight preparate signature, QR code optimizat)
-Ton: expert în menu engineering & neuromarketing HORECA, date acționabile, focus pe creșterea AOV și marjei. Limba: română.`;
+const buildMenuPrompt = (rd: any): string => {
+  const dishesList = rd.menuDishes && rd.menuDishes.length > 0
+    ? rd.menuDishes.slice(0, 10).map((d: any) => `- ${d.name} (×${d.mentions}, ${d.sentiment})`).join("\n")
+    : "Date indisponibile din recenzii";
+  const topDishLine = rd.topDish ? `Preparatul star menționat cel mai des: **${rd.topDish}**` : "";
+  const summaryLine = rd.dishesSummary ? `Rezumat recenzii: "${rd.dishesSummary}"` : "";
+  const priceLine = rd.priceLevel ? `Nivel de prețuri: ${"$".repeat(rd.priceLevel)} (${rd.priceLevel}/4)` : "";
+
+  return `Ești expert în menu engineering & neuromarketing HORECA. Realizează un audit complet pentru restaurantul **${rd.name}** (rating Google: ${rd.rating}/5, ${rd.reviewCount || "?"} recenzii).
+
+DATE REALE RESTAURANT:
+${priceLine}
+${topDishLine}
+${summaryLine}
+Preparate menționate în recenzii:
+${dishesList}
+
+STRUCTURĂ OBLIGATORIE:
+
+### 1. Analiza structurii actuale
+Bazat pe tipul localului (rating ${rd.rating}, preț ${rd.priceLevel}/4), identifică probleme reale: aglomerare categorii, lipsă ierarhie vizuală, prețuri nepsihologice.
+
+### 2. Transformare descrieri (Before → After)
+Alege 3 preparate din lista de mai sus (prioritizează ${rd.topDish || "preparatele star"}) și rescrie descrierile cu cuvinte senzoriale și storytelling. Format:
+▸ **[Preparat]** — Before: descriere plată → After: descriere cu trigger apetit
+
+### 3. Matrice Profitabilitate
+Clasifică preparatele găsite în: Stars ⭐, Puzzles ❓, Plowhorses 🐎, Dogs 🐕. Recomandări concrete de repoziționare sau eliminare.
+
+### 4. Psihologia prețurilor
+Strategii specifice: ancorare, decoy pricing, eliminare simbol RON, bundle-uri recomandate pentru ${rd.name}.
+
+### 5. Layout & UX Meniu
+Regula triunghiului de aur aplicată la meniul acestui restaurant. Highlight preparate signature. Recomandare QR code dinamic.
+
+REGULI OBLIGATORII:
+- Citează ÎNTOTDEAUNA datele reale (rating ${rd.rating}, preparatele găsite, topDish)
+- Nu rupe cuvintele în mijloc
+- Nu adăuga spații în interiorul cuvintelor sau URL-urilor
+- Maxim 600 cuvinte total
+- Limba: română`;
+};
 
 interface Dish {
   name: string;
@@ -149,7 +184,7 @@ export default function Module05_MenuRedesign({ selectedLocation }: { selectedLo
       <LiveModuleGenerator
         location={selectedLocation}
         title="Audit Meniu & Neuromarketing"
-        prompt={MENU_PROMPT}
+        prompt={buildMenuPrompt(restaurantData)}
         restaurantData={restaurantData}
       />
     </div>
