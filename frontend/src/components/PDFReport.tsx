@@ -1,107 +1,84 @@
-import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font } from '@react-pdf/renderer';
+import { useRef } from 'react';
+import html2pdf from 'html2pdf.js';
 
-// 🔤 Fonturi locale (servite direct din public/fonts/, zero erori 404/CORS)
-Font.register({
-  family: 'Inter',
-  fonts: [
-    { src: '/fonts/Inter-Regular.ttf', fontWeight: 'normal', fontStyle: 'normal' },
-    { src: '/fonts/Inter-Bold.ttf', fontWeight: 'bold', fontStyle: 'normal' },
-    { src: '/fonts/Inter-Italic.ttf', fontWeight: 'normal', fontStyle: 'italic' },
-    { src: '/fonts/Inter-BoldItalic.ttf', fontWeight: 'bold', fontStyle: 'italic' },
-  ],
-});
-
-const styles = StyleSheet.create({
-  page: { padding: 40, fontFamily: 'Inter', fontSize: 10, color: '#111827', backgroundColor: '#ffffff' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 10, borderBottom: '2px solid #f59e0b' },
-  logo: { fontSize: 16, fontWeight: 'bold', color: '#d97706' },
-  subtitle: { fontSize: 9, color: '#6b7280' },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 6, color: '#0f172a' },
-  section: { marginBottom: 16 },
-  sectionTitle: { fontSize: 13, fontWeight: 'bold', marginBottom: 6, color: '#b45309', backgroundColor: '#fef3c7', padding: 4, borderRadius: 4 },
-  text: { marginBottom: 4, lineHeight: 1.4 },
-  bullet: { marginLeft: 10, marginBottom: 2 },
-  footer: { position: 'absolute', bottom: 30, left: 40, right: 40, textAlign: 'center', fontSize: 8, color: '#9ca3af', borderTop: '1px solid #e5e7eb', paddingTop: 8 },
-  tocItem: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4, fontSize: 10 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
-  card: { width: '48%', padding: 8, backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, marginBottom: 6 },
-  cardTitle: { fontSize: 10, fontWeight: 'bold', marginBottom: 2 },
-  cardValue: { fontSize: 12, fontWeight: 'bold', color: '#d97706' }
-});
-
-const MODULES = [
-  '01 SEO Analysis', '02 Google Maps Images', '03 Delivery Platforms', '04 Website & Ordering',
-  '05 Menu Redesign', '06 Social Media', '07 Reviews Optimization', '08 Local Maps SEO',
-  '09 Photo Redesign', '10 Growth Plan'
-];
-
-export default function PDFReport({ restaurantName = 'Restaurant Demo', address = 'Adresa Demo', rating = '4.2' }) {
-  return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.logo}>MrDelivery Audit Pro</Text>
-            <Text style={styles.subtitle}>Raport Digital Complet • {new Date().toLocaleDateString('ro-RO')}</Text>
-          </View>
-          <Text style={{ fontSize: 9, color: '#6b7280' }}>Powered by OpenRouter AI</Text>
-        </View>
-        <Text style={styles.title}>Audit Digital: {restaurantName}</Text>
-        <Text style={{ ...styles.text, color: '#4b5563' }}>{address} • Rating Google: ⭐ {rating}</Text>
-        <View style={{ marginTop: 20, marginBottom: 30 }}>
-          <Text style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 8, color: '#0f172a' }}>Cuprins</Text>
-          {MODULES.map((m, i) => (
-            <View key={i} style={styles.tocItem}>
-              <Text>{m}</Text>
-              <Text style={{ color: '#9ca3af' }}>Pag. {i + 2}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={styles.grid}>
-          <View style={styles.card}><Text style={styles.cardTitle}>Scor General</Text><Text style={styles.cardValue}>68/100</Text></View>
-          <View style={styles.card}><Text style={styles.cardTitle}>Vizibilitate Locală</Text><Text style={styles.cardValue}>Medie</Text></View>
-          <View style={styles.card}><Text style={styles.cardTitle}>Potențial Creștere</Text><Text style={styles.cardValue}>+42%</Text></View>
-          <View style={styles.card}><Text style={styles.cardTitle}>Termen Implementare</Text><Text style={styles.cardValue}>90 Zile</Text></View>
-        </View>
-        <Text style={{ marginTop: 20, fontSize: 9, color: '#6b7280', fontStyle: 'italic' }}>
-          Notă: Acest raport conține recomandări generate de AI pe baza datelor publice și a bunelor practici din industria HORECA. 
-          Pentru implementare completă, solicitați consultanță dedicată la contact@mrdelivery.ro
-        </Text>
-        <Text style={styles.footer}>© {new Date().getFullYear()} MrDelivery.ro • Restaurant Audit Pro • Confidențial</Text>
-      </Page>
-
-      {MODULES.map((mod, i) => (
-        <Page key={i} size="A4" style={styles.page}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{mod}</Text>
-            <Text style={styles.text}>
-              Această secțiune va fi populată dinamic cu datele generate live de AI. 
-              Structura include: analiză detaliată, metrici cheie, recomandări prioritizate și checklist acționabil.
-            </Text>
-            <Text style={styles.bullet}>• Identificarea punctelor critice de optimizare</Text>
-            <Text style={styles.bullet}>• Strategii specifice pieței din România</Text>
-            <Text style={styles.bullet}>• Pași de implementare cu estimare de impact</Text>
-            <Text style={styles.bullet}>• KPIs de urmărit post-implementare</Text>
-          </View>
-          <Text style={styles.footer}>© {new Date().getFullYear()} MrDelivery.ro • {mod}</Text>
-        </Page>
-      ))}
-    </Document>
-  );
+interface PDFReportProps {
+  restaurantName: string;
+  address: string;
+  globalScore: number;
+  modules: { title: string; content: string }[];
 }
 
-export function PDFDownloadButton({ restaurantName, address, rating }: { restaurantName?: string, address?: string, rating?: string }) {
+export default function PDFReport({ restaurantName, address, globalScore, modules }: PDFReportProps) {
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  const exportPDF = () => {
+    if (!reportRef.current) return;
+    const opt = {
+      margin:       [10, 10, 10, 10],
+      filename:     `Audit_${restaurantName.replace(/\s+/g, '_')}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+    html2pdf().set(opt).from(reportRef.current).save();
+  };
+
+  const statusBadge = globalScore >= 7 ? '🟢 Performant' : globalScore >= 5 ? '🟡 Are Potențial' : '🔴 Necesită Atenție';
+
   return (
-    <PDFDownloadLink
-      document={<PDFReport restaurantName={restaurantName} address={address} rating={rating} />}
-      fileName={`Audit_${restaurantName?.replace(/\s+/g, '_') || 'Restaurant'}_${new Date().toISOString().slice(0,10)}.pdf`}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px',
-        backgroundColor: '#f59e0b', color: '#000', fontWeight: 600, borderRadius: 8,
-        textDecoration: 'none', fontSize: 14, border: 'none', cursor: 'pointer'
-      }}
-    >
-      {({ loading }: { loading: boolean }) => loading ? '⏳ Se generează PDF...' : '📥 Descarcă Raport PDF'}
-    </PDFDownloadLink>
+    <div className="space-y-4">
+      <button
+        onClick={exportPDF}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+      >
+        📥 Descarcă Raport PDF
+      </button>
+
+      {/* Container ascuns vizual, folosit doar pentru export */}
+      <div ref={reportRef} className="hidden bg-white text-slate-800 font-sans leading-relaxed p-8 max-w-[210mm] mx-auto">
+        {/* Header */}
+        <div className="border-b-2 border-blue-600 pb-4 mb-6">
+          <h1 className="text-2xl font-bold text-slate-900">Raport Audit Digital Complet</h1>
+          <p className="text-lg text-slate-600 mt-1">{restaurantName}</p>
+          <p className="text-sm text-slate-500">{address} • Generat: {new Date().toLocaleDateString('ro-RO')}</p>
+          <div className="mt-3 inline-flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-sm font-semibold">
+            Scor Global: {globalScore}/10 {statusBadge}
+          </div>
+        </div>
+
+        {/* Executive Summary */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h2 className="font-bold text-blue-800 mb-2">📊 Rezumat Executiv</h2>
+          <ul className="space-y-1 text-sm">
+            <li>✅ Module completate: {modules.length}/10</li>
+            <li>⚠️ Probleme critice detectate: {modules.filter(m => m.content.includes('❌') || m.content.includes('CRITIC')).length}</li>
+            <li>💡 Quick wins identificate: {modules.filter(m => m.content.includes('quick win') || m.content.includes('immediat')).length}</li>
+          </ul>
+        </div>
+
+        {/* Modules */}
+        {modules.map((mod, i) => (
+          <div key={i} className="mb-6 page-break-inside-avoid">
+            <h2 className="text-xl font-bold text-slate-900 border-b border-slate-300 pb-2 mb-3">
+              {mod.title}
+            </h2>
+            {/* Render content with proper line breaks & bullets */}
+            <div className="text-sm whitespace-pre-wrap space-y-2">
+              {mod.content.split('\n').map((line, idx) => (
+                <p key={idx} className={line.startsWith('###') ? 'font-bold mt-3 mb-1' : ''}>
+                  {line}
+                </p>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* Footer */}
+        <div className="mt-8 pt-4 border-t border-slate-300 text-center text-xs text-slate-500">
+          MrDelivery Audit Pro • Powered by OpenRouter AI • {new Date().getFullYear()}
+        </div>
+      </div>
+    </div>
   );
 }
