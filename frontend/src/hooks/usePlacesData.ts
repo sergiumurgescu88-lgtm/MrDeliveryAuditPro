@@ -7,6 +7,8 @@ export interface PlacesData {
   recentReviews: { rating: number; text: string; time: string }[];
   summary: string | null; placeId: string;
   photos: string[];
+  lat: number | null;
+  lng: number | null;
 }
 
 // Cache global — un singur fetch per sesiune per restaurant

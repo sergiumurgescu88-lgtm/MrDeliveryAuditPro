@@ -174,7 +174,7 @@ Fill known fields, leave null/[] for unknown.`;
       return res.status(200).json({ error: 'Restaurant negăsit', notFound: true });
     }
 
-    const fields = 'name,rating,user_ratings_total,formatted_address,website,formatted_phone_number,opening_hours,price_level,types,reviews,editorial_summary,photos';
+    const fields = 'name,rating,user_ratings_total,formatted_address,website,formatted_phone_number,opening_hours,price_level,types,reviews,editorial_summary,photos,geometry';
     const detailData = await (await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&language=ro&key=${GMAPS_KEY}`)).json() as any;
     const p = detailData.result;
     if (!p) return res.status(200).json({ error: 'Detalii negăsite', notFound: true });
@@ -197,7 +197,9 @@ Fill known fields, leave null/[] for unknown.`;
       })),
       summary: p.editorial_summary?.overview || null,
       photos: (p.photos || []).slice(0, 6).map((ph: any) => `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${ph.photo_reference}&key=${GMAPS_KEY}`),
-      placeId
+      placeId,
+      lat: p.geometry?.location?.lat || null,
+      lng: p.geometry?.location?.lng || null
     };
 
     // ── Cache write SQLite ───────────────────────────────────────
@@ -330,8 +332,10 @@ app.get('/api/delivery/check', async (req: any, res: any) => {
   if (!name) return res.status(400).json({ error: 'Name missing' });
   const restaurantName = name.split(',')[0].trim();
   const nameLower = restaurantName.toLowerCase().replace(/[^\w\s]/g, '');
-  const nameWords = nameLower.split(/\s+/).filter(w => w.length > 2);
-  const minMatches = Math.max(1, Math.ceil(nameWords.length * 0.6));
+  const stopWords = new Set(['restaurant', 'restaurants', 'food', 'pizza', 'delivery', 'grill', 'bar', 'cafe', 'cafenea', 'kitchen', 'burger', 'sushi', 'bistro', 'house', 'the', 'and', 'bucuresti', 'bucharest']);
+  const nameWords = nameLower.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+  const specificWords = nameWords.length > 0 ? nameWords : nameLower.split(/\s+/).filter(w => w.length > 2);
+  const minMatches = Math.max(1, Math.ceil(specificWords.length * 0.6));
 
   const abortFetch = async (url: string, opts: any = {}, ms = 9000) => {
     const ctrl = new AbortController();
@@ -340,85 +344,57 @@ app.get('/api/delivery/check', async (req: any, res: any) => {
     catch(e) { clearTimeout(t); throw e; }
   };
 
-  // Bolt Food SSR search + Bing site: ca fallback
+  // ── DDG site: search helper (shared pentru Glovo + Bolt) ──
+  const ddgSiteSearch = async (query: string): Promise<string[]> => {
+    const encoded = encodeURIComponent(query);
+    const r = await abortFetch(`https://html.duckduckgo.com/html/?q=${encoded}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'ro-RO,ro;q=0.9,en;q=0.8',
+      }
+    }, 10000);
+    if (!r.ok) return [];
+    const html = await r.text();
+    const urls: string[] = [];
+    const re = /href="(https?:\/\/[^"]+)"/gi;
+    let m;
+    while ((m = re.exec(html)) !== null) urls.push(m[1]);
+    return urls;
+  };
+
+  // Slug din numele restaurantului: "Dum-Dum Food" -> "dum-dum-food"
+  const makeSlug = (name: string): string =>
+    name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+
+  // Verifica daca slug-ul apare in URL (complet sau prin partile semnificative)
+  const slugMatchesUrl = (slug: string, url: string): boolean => {
+    const u = url.toLowerCase();
+    if (u.includes(slug)) return true;
+    const parts = slug.split('-').filter((p: string) => p.length > 2);
+    return parts.length >= 2 && parts.every((p: string) => u.includes(p));
+  };
+
+  // Bolt Food — DDG site: strict (slug match in URL indexat)
   const checkBolt = async (): Promise<boolean> => {
     try {
-      // Metoda 1: Bolt SSR search page — verifica daca restaurantul apare in href (nu doar in URL query)
-      const cleanQ = encodeURIComponent(restaurantName);
-      const r = await abortFetch(`https://food.bolt.eu/ro-ro/325-bucharest/?search=${cleanQ}`, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept-Language': 'ro-RO,ro;q=0.9',
-          'Accept': 'text/html,application/xhtml+xml',
-        }
-      });
-      if (r.ok) {
-        const html = await r.text();
-        // Bolt SPA: cauta restaurant data in JSON embedded (window.__INITIAL_STATE__ sau similar)
-        // sau href catre pagina restaurantului care contine keywords
-        const lower = html.toLowerCase();
-        // Cauta pattern: /p/XXXXX-keyword in href — indica restaurant listing real
-        const hrefMatches = [...html.matchAll(/href="[^"]*\/p\/\d+-([^"]+)"/gi)];
-        for (const m of hrefMatches) {
-          const slug = m[1].toLowerCase().replace(/-/g,' ');
-          const kwHits = nameWords.filter(k => slug.includes(k)).length;
-          if (kwHits >= minMatches) {
-            console.log(`Bolt SSR href match: "${m[1]}"`);
-            return true;
-          }
-        }
-        // Fallback: JSON data embedded in page (unele SPA injecteaza initial state)
-        const jsonMatches = [...html.matchAll(/"name"\s*:\s*"([^"]+)"/gi)];
-        for (const m of jsonMatches) {
-          const vName = m[1].toLowerCase();
-          const kwHits = nameWords.filter(k => vName.includes(k)).length;
-          if (kwHits >= minMatches) {
-            console.log(`Bolt SSR JSON match: "${m[1]}"`);
-            return true;
-          }
-        }
-      }
-      // Metoda 2: Bing cu site:food.bolt.eu — verifica daca exista href real catre domeniu
-      const bingQ = encodeURIComponent(`${restaurantName} site:food.bolt.eu`);
-      const r2 = await abortFetch(`https://www.bing.com/search?q=${bingQ}&cc=RO&setlang=ro`, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept-Language': 'ro-RO,ro;q=0.9,en;q=0.8',
-        }
-      });
-      if (!r2.ok) return false;
-      const html2 = await r2.text();
-      // Verificam href real (nu meta/title) — Bing pune result URL-urile in <a href="https://food.bolt.eu/...">
-      const hrefBolt = html2.match(/href="https:\/\/food\.bolt\.eu\/[^"]*\/p\/\d+[^"]*"/i);
-      if (hrefBolt) {
-        const url = hrefBolt[0].toLowerCase();
-        const kwHits = nameWords.filter(k => url.includes(k.replace(/\s+/g,'-'))).length;
-        console.log(`Bing Bolt site: href found: ${hrefBolt[0].substring(0,80)}, kw=${kwHits}`);
-        // Daca url-ul contine macar 1 keyword din nume = match valid
-        if (kwHits >= 1) return true;
-        // Altfel verifica in context HTML din jurul href-ului
-        const idx = html2.toLowerCase().indexOf(hrefBolt[0].toLowerCase().substring(6,40));
-        const ctx = html2.substring(Math.max(0, idx-200), idx+400).toLowerCase();
-        const ctxKw = nameWords.filter(k => ctx.includes(k)).length;
-        console.log(`Bing Bolt context kw=${ctxKw}/${nameWords.length}`);
-        return ctxKw >= minMatches;
-      }
-      console.log(`Bolt: no SSR match, no Bing href result`);
-      return false;
+      const slug = makeSlug(restaurantName);
+      const urls = await ddgSiteSearch(`"${restaurantName}" site:food.bolt.eu`);
+      const boltUrls = urls.filter((u: string) => u.includes('food.bolt.eu'));
+      const found = boltUrls.some((u: string) => slugMatchesUrl(slug, u));
+      console.log(`Bolt DDG site: "${restaurantName}" slug="${slug}" found=${found} (${boltUrls.length} bolt urls)`);
+      return found;
     } catch(e: any) { console.log(`Bolt error: ${e.message}`); return false; }
   };
 
-  // Glovo SSR — functioneaza direct
+  // Glovo — DDG site: strict (slug match in URL indexat, nu SSR)
   const checkGlovo = async (): Promise<boolean> => {
     try {
-      const cleanQ = encodeURIComponent(restaurantName);
-      const r = await abortFetch(`https://glovoapp.com/ro/ro/bucharest/search/?q=${cleanQ}`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept-Language': 'ro-RO,ro;q=0.9' }
-      });
-      if (!r.ok) return false;
-      const html = await r.text();
-      const found = nameWords.some(k => html.toLowerCase().includes(k));
-      console.log(`Glovo SSR "${restaurantName}": ${found}`);
+      const slug = makeSlug(restaurantName);
+      const urls = await ddgSiteSearch(`"${restaurantName}" site:glovoapp.com/ro/ro/bucharest`);
+      const glovoUrls = urls.filter((u: string) => u.includes('glovoapp.com'));
+      const found = glovoUrls.some((u: string) => slugMatchesUrl(slug, u));
+      console.log(`Glovo DDG site: "${restaurantName}" slug="${slug}" found=${found} (${glovoUrls.length} glovo urls)`);
       return found;
     } catch(e: any) { console.log(`Glovo error: ${e.message}`); return false; }
   };
@@ -433,7 +409,7 @@ app.get('/api/delivery/check', async (req: any, res: any) => {
         `https://restaurant-api.wolt.com/v1/pages/restaurants?lat=${latitude}&lon=${longitude}&q=${cleanQ}`,
         { headers: { 'Accept': 'application/json', 'App-Language': 'ro', 'User-Agent': 'Mozilla/5.0' } }
       );
-      if (!r.ok) { console.log(`Wolt API: HTTP ${r.status}`); return bingSearch('wolt.com'); }
+      if (!r.ok) { console.log(`Wolt API: HTTP ${r.status}`); return false; }
       const data = await r.json() as any;
       for (const section of (data?.sections || [])) {
         for (const item of (section?.items || [])) {
@@ -447,8 +423,8 @@ app.get('/api/delivery/check', async (req: any, res: any) => {
         }
       }
       console.log(`Wolt API: no match, fallback to Bing`);
-      return bingSearch('wolt.com');
-    } catch(e: any) { console.log(`Wolt error: ${e.message}`); return bingSearch('wolt.com'); }
+      return false;
+    } catch(e: any) { console.log(`Wolt error: ${e.message}`); return false; }
   };
 
   const [glovo, bolt, wolt] = await Promise.allSettled([

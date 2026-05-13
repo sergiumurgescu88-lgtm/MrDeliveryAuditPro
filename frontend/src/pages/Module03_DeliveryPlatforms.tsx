@@ -45,7 +45,7 @@ export default function Module03_DeliveryPlatforms({ selectedLocation }: { selec
     if (!placesData?.name) return;
     setDeliveryLoading(true);
     const name = encodeURIComponent(placesData.name);
-    fetch(`/api/delivery/check?name=${name}&address=${encodeURIComponent(placesData.address || '')}`)
+    fetch(`/api/delivery/check?name=${encodeURIComponent(name)}&lat=${placesData.lat ?? ''}&lon=${placesData.lng ?? ''}`)
       .then(r => r.json())
       .then(d => { setDelivery(d); setDeliveryLoading(false); })
       .catch(() => setDeliveryLoading(false));
