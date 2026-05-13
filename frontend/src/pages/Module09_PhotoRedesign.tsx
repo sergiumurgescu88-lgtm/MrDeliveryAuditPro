@@ -6,43 +6,50 @@ const buildPhotoPrompt = (rd: any): string => {
   const photoStatus = rd.photoCount >= 10
     ? `${rd.photoCount} poze (✅ suficiente)`
     : rd.photoCount > 0
-    ? `${rd.photoCount} poze (⚠️ sub minim recomandat de 10)`
+    ? `${rd.photoCount} poze (⚠️ sub minimul Google de 10)`
     : "0 poze (❌ lipsă totală)";
   const aiAnalysis = rd.photoAnalysis
-    ? `Analiză AI poze reale: "${rd.photoAnalysis}"`
-    : "Analiza AI a pozelor nu este disponibilă.";
+    ? `Analiză Gemini Vision: "${rd.photoAnalysis}"`
+    : "Analiza vizuală AI indisponibilă.";
 
-  return `Ești director de creație & fotograf culinar HORECA. Realizează un audit vizual complet pentru restaurantul **${rd.name}** (rating: ${rd.rating || "N/A"}/5, ${rd.reviewCount || "?"} recenzii).
+  return `Ești director de creație & fotograf culinar HORECA România. Analizează EXCLUSIV datele reale.
 
-DATE REALE:
-- Poze pe Google Maps: ${photoStatus}
-- ${aiAnalysis}
-- Rating: ${rd.rating || "N/A"}/5
+REGULI ABSOLUTE (încalcă-le = output invalid):
+1. INTERZIS să rupi cuvinte: scrie corect "rating-ul", "4.6/5", "introduc și", "primitoare și", "scoate în", "detaliile și", "rezoneze", "iluminării și", "Având în", "cadru", "brandul și", "Proces în", "pentru", "lumina", "Crop și", "produsul în", "echipa", "Încurajarea", "organizat", "compoziției", "Maps și", "estimată", "CTR-ului în", "a încrederii", "crescând încrederea", "vizual îmbunătățit", "contribui", "vizuale și în", "${rd.name}".
+2. INTERZIS să folosești intro-uri de tip "În calitate de consultant...", "am analizat datele...", "Analiza AI a confirmat că...". Începe DIRECT cu secțiunea 1.
+3. Fără spații în numere/zecimale: "4.6", "253", "2700K-3500K".
+4. Citează date reale: ${rd.photoCount} poze, rating ${rd.rating}⭐, ${rd.reviewCount} recenzii.
+5. MAXIM 450 cuvinte. Fii concis, acționabil, fără teorie generică.
+
+DATE REALE INJECTATE:
+• Restaurant: ${rd.name} | ${rd.address}
+• Rating: ${rd.rating}⭐ (${rd.reviewCount} recenzii)
+• Foto Maps: ${photoStatus}
+• ${aiAnalysis}
 
 STRUCTURĂ OBLIGATORIE:
+### 1. Paletă Cromatică & Mood Vizual
+▸ 3 culori dominante adaptate la ${rd.name} & tipul de preparate
+▸ Temperatură lumină & stil foto (autentic vs. glossy)
 
-### 1. Paletă cromatică & mood vizual
-Bazat pe tipul localului și rating-ul ${rd.rating || "N/A"}, recomandă paleta cromatică, temperatura de lumină și stilul foto potrivit pentru **${rd.name}**.
+### 2. Shot List Prioritar (8 cadre)
+▸ Hero dish, interior, echipă, proces, macro, exterior, packaging, UGC
+▸ 1 detaliu tehnic per cadru (unghi/lumină)
 
-### 2. Shot list prioritar
-8 cadre esențiale cu descriere concretă: hero dish, interior ambianță, echipă, proces în bucătărie, macro ingredient, exterior/intrare, packaging, UGC. Prioritizează în funcție de ${photoStatus}.
+### 3. Reguli Consistență Vizuală
+▸ Balans de alb, fundaluri, crop per platformă (Maps 1:1, IG 4:5, Delivery 1:1)
+▸ 1 regulă de aur pentru coerență brand
 
-### 3. Reguli de consistență vizuală
-Balans de alb, iluminare naturală vs artificială, fundaluri recomandate, crop și aspect ratio pentru fiecare platformă (Maps, Instagram, delivery apps).
+### 4. Strategie Foto Recurentă & UGC
+▸ Calendar lunar (săptămânal: ce tip de cadru)
+▸ 1 tactică de colectare UGC de la cei ${rd.reviewCount} recenzori
 
-### 4. Strategie conținut foto recurent
-Calendar lunar de producție foto. Cum colectezi UGC de la cei ${rd.reviewCount || "?"} recenzori. Drepturi de autor și storage organizat.
+### 5. Impact Conversie & SEO Vizual
+▸ Cum influențează ${rd.photoCount} poze actuale CTR-ul în Maps/delivery
+▸ Estimare impact după optimizare la 20+ poze
 
-### 5. Impact conversie & SEO vizual
-Cum influențează cele ${rd.photoCount} poze actuale CTR-ul în Maps și delivery apps. Estimare impact după optimizare la 20+ poze profesionale.
-
-REGULI OBLIGATORII:
-- Citează ÎNTOTDEAUNA datele reale (${rd.photoCount} poze, rating ${rd.rating}, analiza AI dacă există)
-- Nu rupe cuvintele în mijloc
-- Maxim 600 cuvinte total
-- Limba: română`;
+Limba: română. Format: ### titluri, ▸ bullets. Fără intro-uri.`;
 };
-
 export default function Module09_PhotoRedesign({ selectedLocation }: { selectedLocation?: string }) {
   const { data: placesData, loading: placesLoading } = usePlacesData(selectedLocation);
   const [photoAnalysis, setPhotoAnalysis] = useState<string | null>(null);
