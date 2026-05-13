@@ -2,35 +2,59 @@ import { motion } from 'framer-motion';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData, getReviewVelocity } from '../hooks/usePlacesData';
 
-const SEO_PROMPT = `Ești un consultant SEO local senior specializat în HORECA România. Analizează EXCLUSIV datele reale din JSON și generează un audit structurat.
+const buildSeoPrompt = (rd: any): string => {
+  const websiteStatus = !rd.hasWebsite
+    ? "LIPSĂ (problemă critică)"
+    : rd.isSocialOnlyWebsite
+    ? `Doar social media: ${rd.website} — nu înlocuiește website propriu`
+    : rd.website;
 
-REGULI OBLIGATORII:
-- Citează întotdeauna datele reale (rating exact, număr recenzii, adresă, website)
-- Dacă isSocialOnlyWebsite=true: tratează lipsa website-ului propriu ca problemă CRITICĂ prioritară
-- Nu rupe cuvintele în mijloc, nu adăuga spații în URL-uri sau cuvinte
-- Format clar: titluri cu ###, bullet points cu ▸, fără text înghesuit
+  const topReviews = (rd.recentReviews || [])
+    .slice(0, 3)
+    .map((r: any, i: number) => `▸ "${r.text?.slice(0, 80)}..." (${r.rating}⭐)`)
+    .join("\n") || "▸ Recenzii indisponibile";
 
-STRUCTURĂ OBLIGATORIE:
+  const flags = [
+    !rd.hasWebsite ? "❌ Website lipsă" : rd.isSocialOnlyWebsite ? "⚠️ Website = social media" : "✅ Website propriu",
+    !rd.hasPhone ? "❌ Telefon nelistat" : "✅ Telefon listat",
+    !rd.hasHours ? "❌ Program incomplet" : "✅ Program configurat",
+  ].join(" | ");
+
+  return `Ești consultant SEO local HORECA România. Audit pentru restaurantul **${rd.name}**, ${rd.address}.
+
+DATE REALE:
+- Rating: ${rd.rating}/5 (${rd.reviewCount} recenzii)
+- GBP Score: ${rd.gbpScore}/100
+- Website: ${websiteStatus}
+- Telefon: ${rd.phone || "LIPSĂ"}
+- Status: ${flags}
+- Recenzii recente:
+${topReviews}
+
+STRUCTURĂ OBLIGATORIE (respectă exact):
 
 ### 1. Audit GBP
-Scor: [gbpScore]/100. Câmpuri lipsă și impactul lor asupra ranking-ului. Dacă website-ul e Facebook/Instagram, menționează explicit că acesta nu înlocuiește un website propriu și afectează credibilitatea SEO.
+Scor ${rd.gbpScore}/100. Listează câmpurile lipsă cu impact specific asupra ranking-ului local. Fii direct.
 
 ### 2. Cuvinte Cheie High-Intent
-Minim 10 cuvinte cheie specifice locației și tipului de cuisine din recenzii. Grupate pe: generale, produs-specifice, livrare/takeaway, micro-moment ("lângă mine").
+10 cuvinte cheie extrase din recenziile de mai sus și locație. Grupate: generale, produs-specifice, livrare, micro-moment.
 
-### 3. Competiție Locală
-Estimare competitori direcți bazată pe tipul de business și cartier. Gap-uri de oportunitate concrete.
+### 3. Competitori & Oportunități
+Estimează 2-3 tipuri de competitori direcți din zona ${rd.address}. Un gap concret de exploatat imediat.
 
-### 4. Strategie de Diferențiere
-Bazată pe rating-ul real și volumul de recenzii din JSON (câmpurile rating și reviewCount) și punctele forte/slabe din recenzii.
+### 4. Recomandări Prioritizate
+🔴 Critice (max 2) | 🟡 Mediu termen (max 2) | 🟢 Long-term (max 1)
 
-### 5. Recomandări Prioritizate
-🔴 Critice (impact mare, urgent) | 🟡 Mediu termen | 🟢 Long-term
+### 5. Plan 30 Zile
+Săptămâna 1-2: 2 acțiuni concrete | Săptămâna 3-4: 2 acțiuni | KPIs: 3 metrici măsurabili
 
-### 6. Plan 30 Zile
-Săptămâna 1-2: Quick Wins | Săptămâna 3-4: Fundație | KPIs măsurabili
-
-Limba: română. Fii specific, nu generic.`;
+REGULI STRICTE:
+- Maxim 450 cuvinte total — nu depăși
+- Nu rupe niciun cuvânt în mijloc (ex: "strate gii" e greșit)
+- Nu lipi "și" de cuvântul anterior (ex: "organicși" e greșit — scrie "organic și")
+- Citează rating-ul ${rd.rating} și cele ${rd.reviewCount} recenzii explicit
+- Limba: română`;
+};
 
 export default function Module01_SEO({ selectedLocation }: { selectedLocation?: string }) {
   const { data: placesData, loading } = usePlacesData(selectedLocation);
@@ -133,7 +157,7 @@ export default function Module01_SEO({ selectedLocation }: { selectedLocation?: 
       <LiveModuleGenerator
         location={selectedLocation}
         title="Analiză SEO Locală"
-        prompt={SEO_PROMPT}
+        prompt={buildSeoPrompt(restaurantData)}
         restaurantData={restaurantData}
       />
     </motion.div>

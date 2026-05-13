@@ -2,13 +2,99 @@ import { useEffect, useState } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData } from '../hooks/usePlacesData';
 
-const GROWTH_PROMPT = `Plan complet de creștere pe 90 de zile pentru restaurant. Folosește TOATE datele agregate din JSON (SEO, social, delivery, website, meniu, recenzii, foto). Structură obligatorie:
-1. Diagnostic Rapid (scor per modul: ce e bun, ce e critic, quick wins imediate)
-2. Roadmap 90 Zile (Sprint-uri: Săptămânile 1-2 Quick Wins, 3-6 Core Improvements, 7-12 Growth Levers) — bazat pe gap-urile reale din date
-3. Matrice de Prioritizare (Impact vs Efort) — cu acțiuni specifice din datele primite
-4. KPI Dashboard (Baseline actual vs Target 90 zile: rating, review velocity, social followers, AOV, conversie website)
-5. Moonshot Idea — o strategie neconvențională cu potențial viral local, specifică acestui restaurant
-Ton: growth strategist HORECA România, focus pe ROI, execuție rapidă, metrici clare. Limba: română.`;
+const buildGrowthPrompt = (rd: any): string => {
+  const scores = rd.scores || {};
+  const scoreLines = [
+    `SEO Local: ${Math.round(scores.seo || 0)}/10`,
+    `Social Media: ${Math.round(scores.social || 0)}/10`,
+    `Website: ${Math.round(scores.website || 0)}/10`,
+    `Delivery: ${Math.round(scores.delivery || 0)}/10`,
+    `Recenzii: ${Math.round(scores.reviews || 0)}/10`,
+    `Meniu: ${Math.round(scores.menu || 0)}/10`,
+  ].join(" | ");
+
+  const socialStatus = rd.social
+    ? [
+        rd.social.instagram ? `Instagram ✅` : `Instagram ❌`,
+        rd.social.facebook  ? `Facebook ✅`  : `Facebook ❌`,
+        rd.social.youtube   ? `YouTube ✅`   : `YouTube ❌`,
+        rd.social.tiktok    ? `TikTok ✅`    : `TikTok ❌`,
+      ].join(", ")
+    : "Date social indisponibile";
+
+  const deliveryStatus = rd.delivery
+    ? [
+        rd.delivery.glovo ? `Glovo ✅` : `Glovo ❌`,
+        rd.delivery.bolt  ? `Bolt ✅`  : `Bolt ❌`,
+        rd.delivery.tazz  ? `Tazz ✅`  : `Tazz ❌`,
+      ].join(", ")
+    : "Date delivery indisponibile";
+
+  const seoStatus = rd.seo?.position
+    ? `Poziție #${rd.seo.position}, competitori: ${rd.seo.competitors?.slice(0,2).join(", ") || "necunoscuți"}`
+    : "Poziție necunoscută";
+
+  const websiteStatus = rd.websiteAudit
+    ? `Score ${rd.websiteAudit.score || "N/A"}/100, SSL: ${rd.websiteAudit.hasSSL ? "✅" : "❌"}, Mobile: ${rd.websiteAudit.isMobile ? "✅" : "❌"}`
+    : rd.website ? "Website prezent, audit indisponibil" : "Fără website";
+
+  const menuStatus = rd.menuDishes?.length
+    ? `${rd.menuDishes.length} preparate identificate, star: ${rd.topDish || "N/A"}`
+    : "Preparate neidentificate";
+
+  const weakModules = Object.entries(scores)
+    .filter(([, v]) => (v as number) < 5)
+    .map(([k]) => k)
+    .join(", ") || "niciun modul critic";
+
+  const strongModules = Object.entries(scores)
+    .filter(([, v]) => (v as number) >= 7)
+    .map(([k]) => k)
+    .join(", ") || "niciun modul performant";
+
+  return `Ești growth strategist HORECA România. Creează un plan de creștere pe 90 de zile pentru restaurantul **${rd.name}** (rating: ${rd.rating || "N/A"}/5, ${rd.reviewCount || "?"} recenzii).
+
+SCORURI ACTUALE PER MODUL (0-10):
+${scoreLines}
+Scor global: **${rd.globalScore}/10**
+
+DATE REALE AGREGATE:
+- Social Media: ${socialStatus}
+- Delivery: ${deliveryStatus}
+- SEO Local: ${seoStatus}
+- Website: ${websiteStatus}
+- Meniu: ${menuStatus}
+- Recenzii recente: ${rd.recentReviews?.length || 0} disponibile
+
+DIAGNOSTIC:
+- Module slabe (sub 5): ${weakModules}
+- Module performante (7+): ${strongModules}
+
+STRUCTURĂ OBLIGATORIE:
+
+### 1. Diagnostic Rapid
+Bazat pe scorurile reale de mai sus: ce funcționează (${strongModules}), ce e critic (${weakModules}), 3 quick wins care pot fi implementate azi.
+
+### 2. Roadmap 90 Zile
+▸ **Săptămânile 1-2 — Quick Wins**: acțiuni cu efort mic și impact imediat, specific pentru ${rd.name}
+▸ **Săptămânile 3-6 — Core Improvements**: fix-uri pentru modulele slabe (${weakModules})
+▸ **Săptămânile 7-12 — Growth Levers**: strategii de creștere bazate pe modulele performante (${strongModules})
+
+### 3. Matrice Prioritizare (Impact vs Efort)
+Top 6 acțiuni concrete din datele reale, clasificate: Impact Mare/Efort Mic → Impact Mare/Efort Mare.
+
+### 4. KPI Dashboard
+Baseline actual vs Target 90 zile pentru: rating (${rd.rating} → ?), review velocity, platforme social active (${Object.values(rd.social || {}).filter(Boolean).length}/4 → 4/4), delivery (${[rd.delivery?.glovo, rd.delivery?.bolt, rd.delivery?.tazz].filter(Boolean).length}/3 → 3/3).
+
+### 5. Moonshot Idea
+O strategie neconvențională cu potențial viral local, specifică pentru **${rd.name}** și publicul său.
+
+REGULI OBLIGATORII:
+- Citează ÎNTOTDEAUNA scorurile reale, modulele slabe și datele agregate
+- Nu rupe cuvintele în mijloc
+- Maxim 700 cuvinte total
+- Limba: română`;
+};
 
 interface AggregatedData {
   social: { instagram: string | null; facebook: string | null; youtube: string | null; tiktok: string | null } | null;
@@ -241,7 +327,7 @@ export default function Module10_GrowthPlan({ selectedLocation }: { selectedLoca
       <LiveModuleGenerator
         location={selectedLocation}
         title="Plan de Creștere 90 Zile"
-        prompt={GROWTH_PROMPT}
+        prompt={buildGrowthPrompt(restaurantData)}
         restaurantData={restaurantData}
       />
     </div>
