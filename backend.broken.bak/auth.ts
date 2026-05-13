@@ -18,7 +18,7 @@ const getStripe = () => {
   return stripeInstance;
 };
 
-router.post('/api/auth/google', async (req, res) => {
+router.post('/google', async (req, res) => {
   try {
     const { token } = req.body;
     const ticket = await client.verifyIdToken({ idToken: token, audience: process.env.GOOGLE_CLIENT_ID });
@@ -30,7 +30,7 @@ router.post('/api/auth/google', async (req, res) => {
   } catch (err: any) { res.status(401).json({ error: err.message }); }
 });
 
-router.get('/api/auth/me', async (req, res) => {
+router.get('/me', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'No token' });
@@ -42,7 +42,7 @@ router.get('/api/auth/me', async (req, res) => {
   } catch (err: any) { res.status(401).json({ error: 'Invalid token' }); }
 });
 
-router.post('/api/credits/spend', async (req, res) => {
+router.post('/credits/spend', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'No token' });
@@ -55,7 +55,7 @@ router.post('/api/credits/spend', async (req, res) => {
   } catch (err: any) { res.status(401).json({ error: 'Invalid token' }); }
 });
 
-router.post('/api/stripe/checkout', async (req, res) => {
+router.post('/stripe/checkout', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'No token' });
@@ -64,14 +64,7 @@ router.post('/api/stripe/checkout', async (req, res) => {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'ron',
-          product_data: { name: '100 Credite MrDelivery Audit Pro', description: 'Pachet 100 credite pentru generare rapoarte AI' },
-          unit_amount: 9900,
-        },
-        quantity: 1,
-      }],
+      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
       mode: 'payment',
       success_url: `${process.env.FRONTEND_URL}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}`,
@@ -81,7 +74,7 @@ router.post('/api/stripe/checkout', async (req, res) => {
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/api/stripe/verify', async (req, res) => {
+router.get('/stripe/verify', async (req, res) => {
   try {
     const { session_id } = req.query;
     if (!session_id) return res.status(400).json({ error: 'Missing session_id' });

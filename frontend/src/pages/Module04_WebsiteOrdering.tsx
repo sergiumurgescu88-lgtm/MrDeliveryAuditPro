@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
+import { usePlacesData } from '../hooks/usePlacesData';
 
 const WEBSITE_PROMPT = `Audit tehnic & UX pentru website-ul restaurantului. Structură obligatorie:
 1. Performanță tehnică (viteză, Core Web Vitals, mobil vs desktop)
@@ -10,53 +11,43 @@ const WEBSITE_PROMPT = `Audit tehnic & UX pentru website-ul restaurantului. Stru
 Ton: expert UX & performance marketing, date acționabile, focus pe conversie. Limba: română.`;
 
 export default function Module04_WebsiteOrdering({ selectedLocation }: { selectedLocation?: string }) {
-  const [metrics, setMetrics] = useState({ speed: '...', mobile: 'Verificare...', ssl: 'Verificare...', schema: 'Verificare...' });
-  const [loading, setLoading] = useState(true);
-  const [website, setWebsite] = useState<string | null>(null);
+  const { data: placesData, loading: placesLoading } = usePlacesData(selectedLocation);
+  const [audit, setAudit] = useState<any>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   useEffect(() => {
-    async function fetchSiteData() {
-      if (!selectedLocation) { setLoading(false); return; }
-      try {
-        const res = await fetch(`/api/places/details?query=${encodeURIComponent(selectedLocation)}`);
-        const d = await res.json();
-        const url = d.website;
-        setWebsite(url);
-        if (!url) {
-          setMetrics({ speed: 'N/A', mobile: 'N/A', ssl: 'N/A', schema: 'N/A' });
-          setLoading(false);
-          return;
-        }
-        // PageSpeed Insights API (free, no key, CORS enabled)
-        const psUrl = `https://pagespeedonline.googleapis.com/pagespeedonline/v5?url=${encodeURIComponent(url)}&category=PERFORMANCE&strategy=mobile`;
-        const psRes = await fetch(psUrl);
-        const psData = await psRes.json();
-        const score = psData?.lighthouseResult?.categories?.performance?.score ?? null;
-        const speedScore = score ? Math.round(score * 100) : null;
-        setMetrics({
-          speed: speedScore !== null ? `${speedScore}/100` : 'Eroare scan',
-          mobile: speedScore !== null ? (speedScore >= 50 ? '✅ Optimizat' : '⚠️ Necesită fix') : 'N/A',
-          ssl: url.startsWith('https') ? '✅ Activ' : '❌ Inactiv',
-          schema: '⚠️ Verificare AI'
-        });
-      } catch (e) {
-        console.error(e);
-        setMetrics({ speed: 'Eroare', mobile: 'Eroare', ssl: 'Eroare', schema: 'Eroare' });
-      }
-      setLoading(false);
-    }
-    fetchSiteData();
-  }, [selectedLocation]);
+    const url = placesData?.website;
+    if (!url) return;
+    setAuditLoading(true);
+    fetch('/api/website/audit?url=' + encodeURIComponent(url))
+      .then(r => r.json())
+      .then(d => { setAudit(d); setAuditLoading(false); })
+      .catch(() => setAuditLoading(false));
+  }, [placesData?.website]);
 
-  const parts = (selectedLocation || '').split(',');
-  const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || '', website, rating: 4.0 };
+  const loading = placesLoading || auditLoading;
+  const website = placesData?.website || null;
+  const fmt = (v: number | null) => v !== null ? Math.round(v * 100) + '/100' : 'N/A';
+  const scoreColor = (v: number | null) =>
+    v === null ? 'bg-slate-50 border-slate-200' :
+    v >= 0.7 ? 'bg-emerald-50 border-emerald-200' :
+    v >= 0.4 ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200';
 
   const cards = [
-    { label: 'PageSpeed Mobile', value: loading ? '🔄...' : metrics.speed, sub: 'Target: 80+', color: 'bg-blue-50 border-blue-200' },
-    { label: 'Mobile UX', value: loading ? '🔄...' : metrics.mobile, sub: 'Responsive & tap targets', color: 'bg-emerald-50 border-emerald-200' },
-    { label: 'SSL Certificate', value: loading ? '🔄...' : metrics.ssl, sub: 'HTTPS obligatoriu', color: 'bg-violet-50 border-violet-200' },
-    { label: 'Schema.org', value: loading ? '🔄...' : metrics.schema, sub: 'Restaurant markup', color: 'bg-amber-50 border-amber-200' }
+    { label: 'Performanță', value: loading ? '🔄...' : fmt(audit?.performance ?? null), sub: audit?.responseTimeMs ? audit.responseTimeMs + 'ms răspuns' : 'Viteză pagină', color: scoreColor(audit?.performance ?? null) },
+    { label: 'SEO Tehnic', value: loading ? '🔄...' : fmt(audit?.seo ?? null), sub: audit?.hasSchemaOrg ? '✅ Schema.org prezent' : '⚠️ Fără Schema.org', color: scoreColor(audit?.seo ?? null) },
+    { label: 'SSL / HTTPS', value: loading ? '🔄...' : (audit?.hasHttps ? '✅ Activ' : (website ? '❌ Inactiv' : 'N/A')), sub: 'Securitate conexiune', color: audit?.hasHttps ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200' },
+    { label: 'Best Practices', value: loading ? '🔄...' : fmt(audit?.bestPractices ?? null), sub: audit?.hasGzip ? '✅ Gzip activ' : '⚠️ Fără compresie', color: scoreColor(audit?.bestPractices ?? null) },
   ];
+
+  const restaurantData = {
+    name: placesData?.name || selectedLocation?.split(',')[0]?.trim() || 'Restaurant',
+    address: placesData?.address || '',
+    rating: placesData?.rating || null,
+    reviewCount: placesData?.reviewCount || null,
+    website,
+    audit: audit ? { performance: audit.performance, seo: audit.seo, hasHttps: audit.hasHttps, hasGzip: audit.hasGzip, hasSchemaOrg: audit.hasSchemaOrg, responseTimeMs: audit.responseTimeMs, opportunities: audit.opportunities } : null,
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
@@ -64,14 +55,22 @@ export default function Module04_WebsiteOrdering({ selectedLocation }: { selecte
       <p className="text-slate-400 mb-6">Audit UX, conversie, performanță tehnică și optimizare comenzi online</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {cards.map((c, i) => (
-          <div key={i} className={`p-4 rounded-xl border ${c.color}`}>
+          <div key={i} className={"p-4 rounded-xl border " + c.color}>
             <p className="text-xs text-slate-500 mb-1">{c.label}</p>
             <p className="text-lg font-bold text-slate-800">{c.value}</p>
             <p className="text-xs text-slate-400 mt-1">{c.sub}</p>
           </div>
         ))}
       </div>
-      {!website && !loading && (
+      {audit?.opportunities?.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+          <p className="text-sm font-semibold text-amber-800 mb-2">⚠️ Probleme detectate:</p>
+          <ul className="space-y-1">
+            {audit.opportunities.map((o: string, i: number) => <li key={i} className="text-sm text-amber-700">• {o}</li>)}
+          </ul>
+        </div>
+      )}
+      {!website && !placesLoading && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 mb-4">
           ⚠️ Restaurantul nu are website public în Google Maps. Auditul se va baza pe recomandări standard.
         </div>

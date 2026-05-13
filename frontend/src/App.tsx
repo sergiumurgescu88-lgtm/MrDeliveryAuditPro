@@ -42,7 +42,7 @@ function AuthButton() {
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-1.5">
         <span className="text-[10px] font-medium bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">💎 {user.credits}</span>
-        <button onClick={buyCredits} className="px-1.5 py-0.5 bg-amber-500 text-white text-[10px] font-medium rounded hover:bg-amber-600 transition">💳 +100 (99 RON)</button>
+        <button onClick={buyCredits} className="px-1.5 py-0.5 bg-amber-500 text-white text-[10px] font-medium rounded hover:bg-amber-600 transition">💳 +100</button>
       </div>
       <button onClick={logout} className="text-[10px] text-slate-400 hover:text-red-500 transition self-end">Ieșire</button>
     </div>
@@ -62,6 +62,15 @@ function App() {
   const hasNext = active < 10;
 
   const [selectedLocation, setSelectedLocation] = useState(() => localStorage.getItem('mrdelivery_loc') || '');
+  const [restaurantData, setRestaurantData] = useState<any>(null);
+
+  useEffect(() => {
+    if (!selectedLocation) return;
+    fetch(`/api/places/details?query=${encodeURIComponent(selectedLocation)}`)
+      .then(r => r.json())
+      .then(data => { if (data?.name) setRestaurantData(data); })
+      .catch(() => {});
+  }, [selectedLocation]);
 
   useEffect(() => { if (selectedLocation) localStorage.setItem('mrdelivery_loc', selectedLocation); }, [selectedLocation]);
   useEffect(() => { if (view === 'app') trackPageView(`/#module-${active}`); }, [active, view]);
@@ -85,7 +94,7 @@ function App() {
         <div className="glass-card px-5 py-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center font-bold text-white shadow-lg shadow-amber-500/20">M</div>
-            <h1 className="text-base font-semibold tracking-tight">MrDelivery <span className="text-amber-500">Audit Pro</span></h1>
+            <h1 className="text-[10px] font-medium tracking-tight">MrDelivery <span className="text-amber-500">Audit Pro</span></h1>
           <div className="flex items-center gap-2 ml-auto">
             <AuthButton />
           </div>
@@ -112,7 +121,7 @@ function App() {
               <LocationSearch onSelect={setSelectedLocation} />
             </div>
             <Suspense fallback={<LoadingSkeleton />}>
-              {active === 0 && <Module00_Dashboard key={selectedLocation} selectedLocation={selectedLocation} />}
+              {active === 0 && <Module00_Dashboard key={selectedLocation} selectedLocation={selectedLocation} restaurantData={restaurantData} />}
               {active === 1 && <Module01_SEO key={selectedLocation} selectedLocation={selectedLocation} />}
               {active === 2 && <Module02_GoogleMapsImages key={selectedLocation} selectedLocation={selectedLocation} />}
               {active === 3 && <Module03_DeliveryPlatforms key={selectedLocation} selectedLocation={selectedLocation} />}

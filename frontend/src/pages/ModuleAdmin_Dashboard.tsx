@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { getLeads, getAuditLogs, exportToCSV, type Lead, type AuditLog } from '../lib/dataLogger';
 
-const ADMIN_PASSWORD = 'mrdelivery2024';
+
 
 export default function ModuleAdmin_Dashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -27,7 +27,7 @@ export default function ModuleAdmin_Dashboard() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) { setIsAuthenticated(true); setError(''); }
+    if (password === 'mrdelivery2024') { setIsAuthenticated(true); setError(''); }
     else setError('Parolă incorectă');
   };
 

@@ -19,8 +19,6 @@ const RESPONSE_TEMPLATES = [
 export default function Module07_ReviewsOptimization({ selectedLocation }: { selectedLocation?: string }) {
   const { data: places, loading } = usePlacesData(selectedLocation);
   const parts = (selectedLocation || '').split(',');
-  const restaurantData = { name: parts[0]?.trim() || 'Restaurant', address: parts.slice(1).join(',').trim() || selectedLocation || '', rating: places?.rating || 4.5 };
-
   const sentimentScore = getSentimentScore(places?.rating ?? null);
   const ratingTarget = getRatingTarget(places?.rating ?? null);
   const reviewVelocity = places ? getReviewVelocity(places.reviewCount) : '8/lună';
@@ -38,6 +36,23 @@ export default function Module07_ReviewsOptimization({ selectedLocation }: { sel
     { label: 'Review Velocity', value: loading ? '...' : reviewVelocity, sub: 'Industry avg: 5/lună' },
     { label: 'Sentiment Score', value: loading ? '...' : `${sentimentScore}/100`, sub: 'Target: 85+' },
   ];
+
+  const restaurantData = {
+    name: places?.name || parts[0]?.trim() || 'Restaurant',
+    address: places?.address || parts.slice(1).join(',').trim() || '',
+    rating: places?.rating || null,
+    reviewCount: places?.reviewCount || null,
+    website: places?.website || null,
+    phone: places?.phone || null,
+    priceLevel: places?.priceLevel || null,
+    types: places?.types || [],
+    openingHours: places?.openingHours || [],
+    recentReviews: places?.recentReviews || [],
+    sentimentScore,
+    reviewVelocity,
+    ratingTarget,
+    keywords: keywords.map(k => ({ word: k.word, sentiment: k.sentiment, count: k.count })),
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">

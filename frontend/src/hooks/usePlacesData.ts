@@ -6,16 +6,31 @@ export interface PlacesData {
   types: string[]; isOpenNow: boolean | null; openingHours: string[];
   recentReviews: { rating: number; text: string; time: string }[];
   summary: string | null; placeId: string;
+  photos: string[];
+}
+
+// Cache global — un singur fetch per sesiune per restaurant
+const placesCache: Record<string, PlacesData> = {};
+const pendingFetches: Record<string, Promise<PlacesData>> = {};
+
+async function fetchPlaces(location: string): Promise<PlacesData> {
+  if (placesCache[location]) return placesCache[location];
+  if (location in pendingFetches) return pendingFetches[location];
+  pendingFetches[location] = fetch(`/api/places/details?query=${encodeURIComponent(location)}`)
+    .then(r => r.json())
+    .then(d => { placesCache[location] = d; delete pendingFetches[location]; return d; });
+  return pendingFetches[location];
 }
 
 export function usePlacesData(location?: string) {
-  const [data, setData] = useState<PlacesData | null>(null);
+  const [data, setData] = useState<PlacesData | null>(location && placesCache[location] ? placesCache[location] : null);
   const [loading, setLoading] = useState(false);
   useEffect(() => {
     if (!location) { setData(null); return; }
-    setLoading(true); setData(null);
-    fetch(`/api/places/details?query=${encodeURIComponent(location)}`)
-      .then(r => r.json()).then(d => { setData(d); setLoading(false); })
+    if (placesCache[location]) { setData(placesCache[location]); return; }
+    setLoading(true);
+    fetchPlaces(location)
+      .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, [location]);
   return { data, loading };

@@ -1,8 +1,27 @@
 import { useAuth } from "../context/AuthContext";
+import { usePlacesData } from '../hooks/usePlacesData';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { logAudit } from '../lib/dataLogger';
 
+
+
+
+
+
+const renderMarkdown = (text: string): string => {
+  let html = text
+    .replace(/^### (.+)$/gm, '<h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:20px 0 8px">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 style="font-size:17px;font-weight:700;color:#1e293b;margin:24px 0 8px">$1</h2>')
+    .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0"/>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^[\*\-] (.+)$/gm, '<li style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#f59e0b">▸</span><span>$1</span></li>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li style="display:flex;gap:8px;margin-bottom:6px"><span style="color:#d97706;font-weight:600">$1.</span><span>$2</span></li>')
+    .replace(/(<li[^>]*>[\s\S]*?<\/li>)/g, '$1');
+  html = html.replace(/(<li[^>]*>.*<\/li>\n?)+/g, (m) => '<ul style="margin:8px 0;padding-left:4px">' + m + '</ul>');
+  html = html.replace(/\n\n/g, '<br/><br/>');
+  return html;
+};
 const cleanText = (text: string) => {
   return text
     .replace(/([a-zA-Z])\s+([ăâîșțĂÂÎȘȚ])/g, '$1$2')
@@ -12,13 +31,6 @@ const cleanText = (text: string) => {
 };
 
 
-interface PlacesData {
-  name: string; rating: number | null; reviewCount: number; address: string;
-  website: string | null; phone: string | null; priceLevel: number | null;
-  types: string[]; isOpenNow: boolean | null; openingHours: string[];
-  recentReviews: { rating: number; text: string; time: string }[];
-  summary: string | null; placeId: string;
-}
 
 interface Props { title: string; prompt: string; restaurantData: any; location?: string; }
 
@@ -29,26 +41,16 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
-  const [placesData, setPlacesData] = useState<PlacesData | null>(null);
-  const [loadingPlaces, setLoadingPlaces] = useState(false);
+  const { data: placesData, loading: loadingPlaces } = usePlacesData(location);
 
   useEffect(() => {
     setDisplayedText(''); setProgress(0); setError(null);
-    setIsComplete(false); setPlacesData(null);
+    setIsComplete(false);
     if (abortControllerRef.current) abortControllerRef.current.abort();
     setIsGenerating(false);
     queueRef.current = [];
   }, [location]);
 
-  // Fetch date reale Google Places
-  useEffect(() => {
-    if (!location) return;
-    setLoadingPlaces(true);
-    fetch(`/api/places/details?query=${encodeURIComponent(location)}`)
-      .then(r => r.json())
-      .then(data => { setPlacesData(data); setLoadingPlaces(false); })
-      .catch(() => setLoadingPlaces(false));
-  }, [location]);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const queueRef = useRef<{ text: string; delay: number }[]>([]);
@@ -59,7 +61,7 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
 
   const splitAndQueue = useCallback((rawText: string) => {
     if (typeof rawText !== 'string' || rawText.trim().length === 0) return;
-    const paragraphs = rawText.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+    const paragraphs = rawText.split(/\n\s*\n/)?.filter(p => p.trim().length > 0);
     const newQueue: { text: string; delay: number }[] = [];
     paragraphs.forEach((para, pIndex) => {
       const sentences = para.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [para];
@@ -93,6 +95,12 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
     streamEndedRef.current = false; abortControllerRef.current = new AbortController();
 
     // Construim restaurantData îmbogățit cu date reale
+    // Extra fields specifice modulului (social, seo, audit, photoAnalysis etc.)
+    const BASE_PLACES_KEYS = new Set(['name','address','rating','reviewCount','website','phone',
+      'priceLevel','types','isOpenNow','openingHours','recentReviews','summary','location']);
+    const extraModuleData = Object.fromEntries(
+      Object.entries(restaurantData || {}).filter(([k]) => !BASE_PLACES_KEYS.has(k))
+    );
     const enrichedData = placesData ? {
       name: placesData.name,
       address: placesData.address,
@@ -101,11 +109,13 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
       website: placesData.website,
       phone: placesData.phone,
       priceLevel: placesData.priceLevel,
-      cuisine: placesData.types.filter(t => !['establishment','food','point_of_interest'].includes(t)).join(', '),
+      cuisine: placesData.types?.filter((t: string) => !['establishment','food','point_of_interest'].includes(t)).join(', '),
       isOpenNow: placesData.isOpenNow,
       openingHours: placesData.openingHours,
       recentReviews: placesData.recentReviews,
       summary: placesData.summary,
+      photos: (placesData as any).photos || [],
+      ...extraModuleData,
     } : { ...restaurantData, name: location?.split(',')[0]?.trim() || restaurantData?.name };
 
     try {
@@ -188,8 +198,11 @@ export default function LiveModuleGenerator({ title, prompt, restaurantData, loc
       {!location && <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-100 mb-4">📍 Selectează o locație reală din sugestii pentru a activa generarea.</p>}
       {isGenerating && <div className="w-full bg-slate-100 rounded-full h-1.5 mb-4 overflow-hidden"><motion.div className="bg-amber-500 h-1.5 rounded-full" initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} /></div>}
       {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm border border-red-100">{error}</div>}
-      <div className="min-h-[160px] bg-slate-50/60 rounded-xl p-4 text-slate-700 leading-relaxed whitespace-pre-wrap text-sm border border-slate-100">
-        {displayedText || (isGenerating ? '⏳ Se preiau datele de la AI...' : 'Apasă "Generează Live" pentru a porni analiza în timp real.')}
+      <div className="min-h-[160px] bg-slate-50/60 rounded-xl p-4 leading-relaxed text-sm border border-slate-100">
+        {displayedText
+          ? <div className="prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdown(displayedText) }} />
+          : <span className="text-slate-400">{isGenerating ? '⏳ Se preiau datele de la AI...' : 'Apasă "Generează Live" pentru a porni analiza în timp real.'}</span>
+        }
         {isGenerating && <span className="inline-block w-2 h-4 bg-amber-500 ml-1 animate-pulse align-middle" />}
       </div>
       {isComplete && displayedText.length > 0 && !error && (

@@ -1,0 +1,145 @@
+import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  credits: number;
+  avatar?: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  login: () => void;
+  logout: () => void;
+  refreshCredits: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  buyCredits: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('mrdelivery_token');
+    const storedUser = localStorage.getItem('mrdelivery_user');
+    if (token && storedUser) setUser(JSON.parse(storedUser));
+    setLoading(false);
+  }, []);
+
+  // 🔹 Încarcă scriptul Google Identity Services O SINGURĂ DATĂ
+  useEffect(() => {
+    if (!document.getElementById('gsi-script')) {
+      const script = document.createElement('script');
+      script.id = 'gsi-script';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  // 🔹 Handler pentru răspunsul Google (ID Token)
+  const handleCredentialResponse = useCallback(async (response: any) => {
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: response.credential }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('mrdelivery_token', data.token);
+        localStorage.setItem('mrdelivery_user', JSON.stringify(data.user));
+        setUser(data.user);
+        window.location.reload();
+      } else {
+        console.error('❌ Auth backend failed:', data.error);
+        alert('Eroare la autentificare: ' + (data.error || 'Server error'));
+      }
+    } catch (err) {
+      console.error('❌ Login network error:', err);
+    }
+  }, []);
+
+  // 🔹 Inițializare GSI (rulează o singură dată după mount)
+  useEffect(() => {
+    const initGSI = () => {
+      if (!window.google?.accounts?.id) return setTimeout(initGSI, 200);
+      
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
+        callback: handleCredentialResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        itp_support: true,
+      });
+    };
+    initGSI();
+
+    // Cleanup la unmount pentru a preveni inițializări duplicate
+    return () => {
+      if (window.google?.accounts?.id) {
+        try { window.google.accounts.id.cancel(); } catch {}
+      }
+    };
+  }, [handleCredentialResponse]);
+
+  const login = () => {
+    if (!window.google?.accounts?.id) {
+      alert('Google SDK se încarcă. Încearcă din nou în 2 secunde.');
+      return;
+    }
+    // Deschide popup-ul / One Tap
+    window.google.accounts.id.prompt((notification: any) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        console.log('GSI prompt skipped:', notification.getNotDisplayedReason?.() || notification.getSkippedReason?.());
+      }
+    });
+  };
+
+  const logout = () => {
+    localStorage.removeItem('mrdelivery_token');
+    localStorage.removeItem('mrdelivery_user');
+    setUser(null);
+    window.location.href = '/';
+  };
+
+  const refreshCredits = async () => {
+    try {
+      const token = localStorage.getItem('mrdelivery_token');
+      if (!token) return;
+      const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setUser(prev => prev ? { ...prev, credits: data.credits } : null);
+        localStorage.setItem('mrdelivery_user', JSON.stringify({ ...user, credits: data.credits }));
+      }
+    } catch (e) { console.error('Credit refresh failed', e); }
+  };
+
+  const buyCredits = () => {
+    window.location.href = '/api/stripe/checkout?amount=100&price=99';
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshCredits, refreshUser: refreshCredits, buyCredits }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+};
+
+// Tipare globală pentru GSI
+declare global {
+  interface Window { google: any; }
+}
