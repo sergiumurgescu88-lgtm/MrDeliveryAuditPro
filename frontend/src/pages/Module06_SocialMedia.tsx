@@ -2,13 +2,46 @@ import { useState, useEffect } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData } from '../hooks/usePlacesData';
 
-const SOCIAL_PROMPT = `Strategie completă de social media pentru restaurant. Structură obligatorie:
-1. Audit prezență actuală (Instagram, TikTok, Facebook, YouTube - conturi găsite, stare actuală)
-2. UGC Loops & Community Building (cum transformi clienții în creatori de conținut, hashtag dedicat, repost strategy)
-3. Calendar de conținut pe 4 săptămâni (mix Reels/Stories/Postări, hook-uri virale, timing optim)
-4. Creștere organică & colaborări (micro-influenceri locali, parteneriate, giveaway-uri inteligente)
-5. KPIs & Tracking (engagement rate, reach, conversie din social, tool-uri de monitorizare)
-Ton: strategist social media HORECA România, focus pe viralitate locală și conversie în comenzi/rezervări. Limba: română.`;
+const buildSocialPrompt = (rd: any): string => {
+  const ig = rd.social?.instagram ? `✅ ${rd.social.instagram}` : "❌ Lipsă";
+  const fb = rd.social?.facebook ? `✅ ${rd.social.facebook}` : "❌ Lipsă";
+  const yt = rd.social?.youtube ? `✅ ${rd.social.youtube}` : "❌ Lipsă";
+  const tt = rd.social?.tiktok ? `✅ ${rd.social.tiktok}` : "❌ Lipsă";
+  const active = rd.social?.activeCount ?? 0;
+
+  return `Ești strategist social media HORECA România. Realizează o strategie completă pentru restaurantul **${rd.name}** (rating Google: ${rd.rating || "N/A"}/5, ${rd.reviewCount || "?"} recenzii).
+
+PREZENȚĂ ACTUALĂ PE REȚELE SOCIALE:
+- Instagram: ${ig}
+- Facebook: ${fb}
+- YouTube: ${yt}
+- TikTok: ${tt}
+- Conturi active găsite: ${active}/4
+
+STRUCTURĂ OBLIGATORIE:
+
+### 1. Audit prezență actuală
+Evaluează critic cele ${active} conturi găsite. Ce lipsește, ce oportunități există imediat.
+
+### 2. UGC Loops & Community Building
+Cum transformi cei ${rd.reviewCount || "câțiva"} recenzori Google în creatori de conținut. Hashtag dedicat pentru ${rd.name}, repost strategy, sistem de recompense pentru UGC.
+
+### 3. Calendar conținut 4 săptămâni
+Mix Reels/Stories/Postări adaptat la platformele ${active > 0 ? "active găsite" : "recomandate (Instagram + TikTok prioritar)"}. Hook-uri virale specifice HORECA. Timing optim pentru publicul românesc.
+
+### 4. Creștere organică & colaborări
+Micro-influenceri locali din același oraș. Parteneriate complementare. Giveaway-uri inteligente cu ROI pozitiv.
+
+### 5. KPIs & Tracking
+Engagement rate target, reach lunar, conversie din social în comenzi/rezervări. Tool-uri gratuite de monitorizare.
+
+REGULI OBLIGATORII:
+- Citează ÎNTOTDEAUNA datele reale (rating ${rd.rating}, conturile găsite/lipsă, numărul de recenzii)
+- Nu rupe cuvintele în mijloc
+- Nu adăuga spații în interiorul URL-urilor
+- Maxim 600 cuvinte total
+- Limba: română`;
+};
 
 interface SocialLinks {
   instagram: string | null;
@@ -112,7 +145,7 @@ export default function Module06_SocialMedia({ selectedLocation }: { selectedLoc
         </div>
       </div>
 
-      <LiveModuleGenerator location={selectedLocation} title="Strategie Social Media" prompt={SOCIAL_PROMPT} restaurantData={restaurantData} />
+      <LiveModuleGenerator location={selectedLocation} title="Strategie Social Media" prompt={buildSocialPrompt(restaurantData)} restaurantData={restaurantData} />
     </div>
   );
 }
