@@ -2,13 +2,31 @@ import { useState, useEffect } from 'react';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData } from '../hooks/usePlacesData';
 
-const MAPS_IMAGES_PROMPT = `Generează un audit vizual complet pentru imaginile Google Maps ale unui restaurant. Structură obligatorie:
-1. Analiza Stării Actuale (presupunem foto UGC standard pe Maps: iluminare slabă, cadre aglomerate, lipsă consistență. Focus pe oportunități de upgrade)
-2. Concept de Redesign Premium (direcție artistică tip Michelin, iluminare, mood, paletă cromatică)
-3. Shot List Profesional (5 cadre esențiale cu detalii tehnice: unghi, iluminare, compoziție, subiect, echipament recomandat)
-4. Calendar Vizual Trimestrial (teme sezoniere și evenimente locale pentru conținut foto recurent)
-5. Recomandări Acționabile (prioritizate: Quick Wins / Medium / Long-term)
-Ton: expert în fotografie culinară & branding vizual, orientat spre conversie și percepție premium. Limba: română. Format: clar, cu bullet points și secțiuni distincte.`;
+const MAPS_IMAGES_PROMPT = `Ești un director de creație și fotograf culinar HORECA cu 15 ani experiență în România. Analizează EXCLUSIV datele reale furnizate în JSON.
+
+REGULI OBLIGATORII DE FORMATARE:
+- Nu rupe cuvintele în mijloc (ex: "consis tență" e greșit, "consistență" e corect)
+- Nu adăuga spații în URL-uri sau în interiorul cuvintelor
+- Dacă există câmpul "photoAnalysis" în date, citează-l explicit la început ca "Analiză Gemini Vision:"
+- Format: titluri cu ###, bullet points cu ▸
+
+### 1. Analiză Stare Actuală
+Începe cu: "Gemini Vision a identificat: [photoAnalysis din JSON]". Apoi extinde analiza pe baza numărului de poze (photoCount) și rating-ului.
+
+### 2. Concept Redesign Premium
+Direcție artistică specifică tipului de restaurant (fast-food/casual/fine-dining bazat pe types și priceLevel din date). Iluminare, mood, paletă cromatică.
+
+### 3. Shot List Profesional
+5 cadre esențiale cu: unghi, iluminare, compoziție, subiect, echipament. Adaptate la tipul real de restaurant.
+
+### 4. Calendar Vizual Trimestrial
+Teme sezoniere specifice Bucureștiului și evenimentelor locale.
+
+### 5. Recomandări Prioritizate
+🔴 Critice | 🟡 Mediu termen | 🟢 Long-term
+Dacă photoCount < 10: marchează ca 🔴 CRITIC — sub minimul Google recomandat.
+
+Limba: română. Fii specific și concis — maxim 600 cuvinte total.`;
 
 interface Photo { url: string; title: string; }
 
@@ -35,7 +53,7 @@ export default function Module02_GoogleMapsImages({ selectedLocation }: { select
 
   const rawPhotos: string[] = (placesData as any)?.photos || [];
   const photos: Photo[] = rawPhotos.slice(0, 3).map((url, idx) => ({
-    url, title: idx === 0 ? 'Interior Panoramic' : idx === 1 ? 'Signature Dish' : 'Bar & Băuturi'
+    url, title: idx === 0 ? 'Fotografie #1' : idx === 1 ? 'Fotografie #2' : 'Fotografie #3'
   }));
 
   const photoCount = rawPhotos.length;

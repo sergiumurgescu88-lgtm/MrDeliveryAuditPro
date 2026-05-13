@@ -2,14 +2,35 @@ import { motion } from 'framer-motion';
 import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData, getReviewVelocity } from '../hooks/usePlacesData';
 
-const SEO_PROMPT = `Analiză SEO locală detaliată pentru restaurantul furnizat. Folosind EXCLUSIV datele reale din JSON (rating, recenzii, website, tipuri, ore, telefon, GBP score), generează:
-1. Audit GBP (Google Business Profile) — completitudine, câmpuri lipsă, scor estimat și impact asupra ranking-ului
-2. Cuvinte cheie cu intenție ridicată (high-intent) specifice tipului de cuisine și locației din date
-3. Analiza competiției locale — pe baza tipului de business și locației, estimează competitori direcți și gap-uri de oportunitate
-4. Strategie de diferențiere — bazată pe punctele forte reale (rating exact, volum recenzii, unicitate din tipuri)
-5. Recomandări on-page & off-page — concrete, prioritizate
-6. Plan de acțiune 30 de zile (Quick Wins / Medium / Long-term) cu KPIs măsurabili
-IMPORTANT: Citează mereu datele reale (ex: "cu rating-ul tău de X și Y recenzii..."). Nu inventa statistici. Limba: română.`;
+const SEO_PROMPT = `Ești un consultant SEO local senior specializat în HORECA România. Analizează EXCLUSIV datele reale din JSON și generează un audit structurat.
+
+REGULI OBLIGATORII:
+- Citează întotdeauna datele reale (rating exact, număr recenzii, adresă, website)
+- Dacă isSocialOnlyWebsite=true: tratează lipsa website-ului propriu ca problemă CRITICĂ prioritară
+- Nu rupe cuvintele în mijloc, nu adăuga spații în URL-uri sau cuvinte
+- Format clar: titluri cu ###, bullet points cu ▸, fără text înghesuit
+
+STRUCTURĂ OBLIGATORIE:
+
+### 1. Audit GBP
+Scor: [gbpScore]/100. Câmpuri lipsă și impactul lor asupra ranking-ului. Dacă website-ul e Facebook/Instagram, menționează explicit că acesta nu înlocuiește un website propriu și afectează credibilitatea SEO.
+
+### 2. Cuvinte Cheie High-Intent
+Minim 10 cuvinte cheie specifice locației și tipului de cuisine din recenzii. Grupate pe: generale, produs-specifice, livrare/takeaway, micro-moment ("lângă mine").
+
+### 3. Competiție Locală
+Estimare competitori direcți bazată pe tipul de business și cartier. Gap-uri de oportunitate concrete.
+
+### 4. Strategie de Diferențiere
+Bazată pe rating-ul real și volumul de recenzii din JSON (câmpurile rating și reviewCount) și punctele forte/slabe din recenzii.
+
+### 5. Recomandări Prioritizate
+🔴 Critice (impact mare, urgent) | 🟡 Mediu termen | 🟢 Long-term
+
+### 6. Plan 30 Zile
+Săptămâna 1-2: Quick Wins | Săptămâna 3-4: Fundație | KPIs măsurabili
+
+Limba: română. Fii specific, nu generic.`;
 
 export default function Module01_SEO({ selectedLocation }: { selectedLocation?: string }) {
   const { data: placesData, loading } = usePlacesData(selectedLocation);
@@ -19,6 +40,8 @@ export default function Module01_SEO({ selectedLocation }: { selectedLocation?: 
   const hasWebsite = !!placesData?.website;
   const hasPhone = !!placesData?.phone;
   const hasHours = (placesData?.openingHours?.length || 0) > 0;
+  const SOCIAL_DOMAINS = ['facebook.com', 'instagram.com', 'tiktok.com', 'twitter.com', 'x.com'];
+  const isSocialOnlyWebsite = hasWebsite && SOCIAL_DOMAINS.some(d => placesData?.website?.includes(d));
   const reviewVelocity = reviews ? getReviewVelocity(reviews) : 'N/A';
 
   const gbpScore = Math.round(
@@ -50,9 +73,9 @@ export default function Module01_SEO({ selectedLocation }: { selectedLocation?: 
     },
     {
       label: 'Prezență Web',
-      value: loading ? '🔄...' : hasWebsite ? '✅ Website activ' : '❌ Fără website',
+      value: loading ? '🔄...' : !hasWebsite ? '❌ Fără website' : isSocialOnlyWebsite ? '⚠️ Doar social media' : '✅ Website propriu',
       sub: hasPhone ? '✅ Telefon listat' : '⚠️ Telefon lipsă',
-      color: hasWebsite ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200',
+      color: !hasWebsite ? 'bg-red-50 border-red-200' : isSocialOnlyWebsite ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200',
     },
   ];
 
@@ -70,6 +93,7 @@ export default function Module01_SEO({ selectedLocation }: { selectedLocation?: 
     recentReviews: placesData?.recentReviews || [],
     summary: placesData?.summary || null,
     gbpScore,
+    isSocialOnlyWebsite,
     hasWebsite,
     hasPhone,
     hasHours,
@@ -96,7 +120,7 @@ export default function Module01_SEO({ selectedLocation }: { selectedLocation?: 
           <h3 className="text-sm font-semibold text-slate-700 mb-3">✅ GBP Checklist</h3>
           <ul className="space-y-2 text-sm text-slate-600">
             <li>{rating ? `✅ Rating ${rating}⭐ (${reviews} recenzii)` : '❌ Fără rating sau recenzii'}</li>
-            <li>{hasWebsite ? `✅ Website conectat: ${placesData.website}` : '❌ Website lipsă din GBP'}</li>
+            <li>{!hasWebsite ? '❌ Website lipsă din GBP' : isSocialOnlyWebsite ? `⚠️ Doar pagină social media: ${placesData.website} (nu înlocuiește un website real)` : `✅ Website propriu: ${placesData.website}`}</li>
             <li>{hasPhone ? `✅ Telefon verificat: ${placesData.phone}` : '❌ Telefon nelistat'}</li>
             <li>{hasHours ? '✅ Program complet configurat' : '❌ Ore de funcționare lipsă'}</li>
             <li>{(placesData.photos?.length || 0) > 0 ? `✅ ${placesData.photos?.length || 0} fotografii încărcate` : '❌ Fără fotografii'}</li>
