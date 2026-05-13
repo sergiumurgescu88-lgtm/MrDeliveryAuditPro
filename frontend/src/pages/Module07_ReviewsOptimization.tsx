@@ -8,148 +8,46 @@ const buildReviewsPrompt = (rd: any): string => {
   const kwPositive = rd.keywords?.filter((k: any) => k.sentiment === 'positive').map((k: any) => k.word).join(", ") || "N/A";
   const kwNegative = rd.keywords?.filter((k: any) => k.sentiment === 'negative').map((k: any) => k.word).join(", ") || "N/A";
 
-  return `Ești expert în reputation management & customer experience HORECA. Realizează o strategie completă pentru restaurantul **${rd.name}** (rating Google: ${rd.rating || "N/A"}/5, ${rd.reviewCount || "?"} recenzii totale).
+  return `Ești expert în reputation management & customer experience HORECA România. Analizează EXCLUSIV datele reale.
 
-DATE REALE:
-- Rating actual: ${rd.rating || "N/A"}/5 → Target recomandat: ${rd.ratingTarget}
-- Sentiment score: ${rd.sentimentScore}/100
-- Review velocity estimată: ${rd.reviewVelocity}
-- Cuvinte cheie pozitive din recenzii: ${kwPositive}
-- Cuvinte cheie negative din recenzii: ${kwNegative}
+REGULI ABSOLUTE (încalcă-le = output invalid):
+1. INTERZIS să rupi cuvinte: scrie corect "reputației și", "4.6/5", "este în", "la înălțimea", "fi îmbunătățite", "aplicabil și", "noi și", "detaliu și", "recâștigăm încrederea și", "recenziile în", "meniul și", "${rd.name}".
+2. INTERZIS să folosești meta-comentarii precum "conform datelor furnizate", "nu există în date", "este un scenariu general". Livrează DIRECT strategia, fără să explici ce faci.
+3. Fără spații în numere: "4.6", "253", "14/lună".
+4. Citează date reale: rating ${rd.rating}⭐, ${rd.reviewCount} recenzii, sentiment ${rd.sentimentScore}/100, velocity ${rd.reviewVelocity}.
+5. MAXIM 500 cuvinte. Fii concis, acționabil, fără teorie generică.
 
-Recenzii recente Google:
+DATE REALE INJECTATE:
+• Restaurant: ${rd.name} | ${rd.address}
+• Rating: ${rd.rating}⭐ (${rd.reviewCount} recenzii) | Target: ${rd.ratingTarget}
+• Sentiment: ${rd.sentimentScore}/100 | Velocity: ${rd.reviewVelocity}
+• Cuvinte cheie pozitive: ${kwPositive}
+• Cuvinte cheie negative: ${kwNegative}
+• Recenzii recente:
 ${reviewsList}
 
 STRUCTURĂ OBLIGATORIE:
-
 ### 1. Analiză Sentiment & Cuvinte Cheie
-Bazat pe recenziile reale de mai sus: top 5 termeni pozitivi, top 5 puncte de durere, trend și scor sentiment ${rd.sentimentScore}/100.
+▸ Top 3 termeni pozitivi & top 2 puncte de durere (bazat strict pe lista de mai sus)
+▸ Trend sentiment & impact asupra conversiei locale
 
-### 2. Framework de Răspuns
-3 template-uri profesionale personalizate pentru **${rd.name}**: recenzie pozitivă, neutră, negativă severă. Ton empatic, soluții concrete, call-to-action de retenție.
+### 2. Framework de Răspuns (Personalizat pentru ${rd.name})
+▸ Template Pozitiv (5⭐): [folosește 1 cuvânt cheie pozitiv real]
+▸ Template Neutru (3⭐): [adresare punct durere + invitație dialog]
+▸ Template Negativ (1-2⭐): [scuze sincere + recovery offer concret + contact direct]
 
 ### 3. Sistem Proactiv de Generare Recenzii
-SMS/email automat post-comandă, timing optim 2-4h, incentive-uri etice, link direct Google Maps, QR pe bon/packaging. Obiectiv: creștere de la ${rd.reviewCount || "?"} la ${Math.round((rd.reviewCount || 100) * 1.5)} recenzii.
+▸ 2 tactici rapide (SMS/email post-comandă, QR pe bon/packaging)
+▸ 1 incentive etic adaptat la ${rd.name}
 
 ### 4. Reputation Rescue Protocol
-Pași concreți când rating-ul scade sub 4.2 (actual: ${rd.rating || "N/A"}). Escaladare internă, monitorizare zilnică, recovery offers.
+▸ Pași concreți dacă rating scade sub 4.2 (actual: ${rd.rating})
+▸ Monitorizare & escaladare internă
 
-### 5. Metrici & Benchmark
-Review velocity target vs actual (${rd.reviewVelocity}), response rate <24h, sentiment trend, impact SEO local.
+### 5. Checklist Acționabil
+🔴 Săptămâna 1: [2 quick wins cu owner]
+🟡 30 Zile: [1 sistem automatizat + 1 KPI]
+🟢 90 Zile: [analiză impact + ajustare meniu/servicii]
 
-### 6. Checklist Acționabil
-▸ Quick Wins (această săptămână)
-▸ Medium-term (30 zile)
-▸ Long-term (90 zile)
-
-REGULI OBLIGATORII:
-- Citează ÎNTOTDEAUNA datele reale (rating ${rd.rating}, ${rd.reviewCount} recenzii, cuvintele cheie găsite)
-- Nu rupe cuvintele în mijloc
-- Maxim 650 cuvinte total
-- Limba: română`;
+Limba: română. Format: ### titluri, ▸ bullets. Fără meta-comentarii.`;
 };
-
-const RESPONSE_TEMPLATES = [
-  { type: 'Pozitivă', color: 'bg-green-50 border-green-200 text-green-800', text: 'Vă mulțumim din suflet pentru apreciere! Ne bucurăm că ați savurat preparatele noastre. Vă așteptăm cu drag și data viitoare!' },
-  { type: 'Neutră', color: 'bg-amber-50 border-amber-200 text-amber-800', text: 'Mulțumim pentru feedback! Ne pare rău că experiența nu a fost la nivelul așteptărilor. Lucrăm constant la îmbunătățire și vă invităm să ne contactați direct pentru o soluție personalizată.' },
-  { type: 'Negativă', color: 'bg-red-50 border-red-200 text-red-800', text: 'Ne cerem scuze sincer pentru experiența neplăcută. Am discutat deja cu echipa și am luat măsuri imediate. Vă rugăm să ne scrieți pentru a remedia situația.' }
-];
-
-export default function Module07_ReviewsOptimization({ selectedLocation }: { selectedLocation?: string }) {
-  const { data: places, loading } = usePlacesData(selectedLocation);
-  const parts = (selectedLocation || '').split(',');
-  const sentimentScore = getSentimentScore(places?.rating ?? null);
-  const ratingTarget = getRatingTarget(places?.rating ?? null);
-  const reviewVelocity = places ? getReviewVelocity(places.reviewCount) : '8/lună';
-  const keywords = places?.recentReviews?.length ? extractKeywords(places.recentReviews) : [
-    { word: 'gustos', sentiment: 'positive', count: 12 },
-    { word: 'proaspat', sentiment: 'positive', count: 9 },
-    { word: 'atmosfera', sentiment: 'positive', count: 7 },
-    { word: 'asteptare', sentiment: 'negative', count: 4 },
-    { word: 'pret', sentiment: 'neutral', count: 3 },
-  ];
-
-  const metrics = [
-    { label: 'Rating Mediu', value: loading ? '...' : places?.rating ? `${places.rating} ⭐` : 'N/A', sub: `Target: ${ratingTarget}` },
-    { label: 'Total Recenzii', value: loading ? '...' : places?.reviewCount ? `${places.reviewCount}` : 'N/A', sub: 'Google Maps (real)' },
-    { label: 'Review Velocity', value: loading ? '...' : reviewVelocity, sub: 'Industry avg: 5/lună' },
-    { label: 'Sentiment Score', value: loading ? '...' : `${sentimentScore}/100`, sub: 'Target: 85+' },
-  ];
-
-  const restaurantData = {
-    name: places?.name || parts[0]?.trim() || 'Restaurant',
-    address: places?.address || parts.slice(1).join(',').trim() || '',
-    rating: places?.rating || null,
-    reviewCount: places?.reviewCount || null,
-    website: places?.website || null,
-    phone: places?.phone || null,
-    priceLevel: places?.priceLevel || null,
-    types: places?.types || [],
-    openingHours: places?.openingHours || [],
-    recentReviews: places?.recentReviews || [],
-    sentimentScore,
-    reviewVelocity,
-    ratingTarget,
-    keywords: keywords.map(k => ({ word: k.word, sentiment: k.sentiment, count: k.count })),
-  };
-
-  return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900 mb-2">07 Reviews Optimization</h1>
-      <p className="text-slate-400 mb-6">Sentiment analysis, response frameworks și strategie de creștere a rating-ului</p>
-
-      <div className="flex flex-col md:flex-row gap-6 mb-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex-1">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">📊 Sentiment Score</h3>
-          <div className="flex items-end gap-2 mb-2">
-            <span className="text-3xl font-bold text-amber-600">{loading ? '...' : sentimentScore}</span>
-            <span className="text-sm text-slate-400 mb-1">/ 100</span>
-          </div>
-          <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
-            <div className="bg-amber-500 h-3 rounded-full transition-all duration-700" style={{ width: `${sentimentScore}%` }} />
-          </div>
-          <p className="text-xs text-slate-400 mt-2">Target: 85+ | Bazat pe rating real Google Maps</p>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex-1">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">🔑 Cuvinte Cheie din Recenzii</h3>
-          {loading ? <p className="text-xs text-slate-400">⏳ Se analizează recenziile reale...</p> : (
-            <div className="flex flex-wrap gap-2">
-              {keywords.map((kw, i) => (
-                <span key={i} className={`px-3 py-1 rounded-full text-xs font-medium border ${
-                  kw.sentiment === 'positive' ? 'bg-green-50 border-green-200 text-green-700' :
-                  kw.sentiment === 'negative' ? 'bg-red-50 border-red-200 text-red-700' :
-                  'bg-slate-50 border-slate-300 text-slate-700'
-                }`}>{kw.word} ({kw.count})</span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
-        <h3 className="text-sm font-semibold text-slate-700 mb-4">💬 Framework de Răspuns</h3>
-        <div className="space-y-3">
-          {RESPONSE_TEMPLATES.map((tpl, i) => (
-            <div key={i} className={`p-4 rounded-lg border text-sm ${tpl.color}`}>
-              <p className="font-semibold mb-1">{tpl.type}</p>
-              <p className="opacity-90">{tpl.text}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {metrics.map((m, i) => (
-          <div key={i} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <p className="text-xs text-slate-400 uppercase tracking-wide">{m.label}</p>
-            <p className="text-xl font-bold text-slate-900 mt-1">{m.value}</p>
-            <p className="text-xs text-amber-600 mt-1">{m.sub}</p>
-          </div>
-        ))}
-      </div>
-
-      <LiveModuleGenerator location={selectedLocation} title="Audit Recenzii & Reputație" prompt={buildReviewsPrompt(restaurantData)} restaurantData={restaurantData} />
-    </div>
-  );
-}
