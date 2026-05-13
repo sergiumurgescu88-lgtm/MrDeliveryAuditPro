@@ -3,7 +3,7 @@ import LiveModuleGenerator from '../components/LiveModuleGenerator';
 import { usePlacesData, getAOV } from '../hooks/usePlacesData';
 
 const buildDeliveryPrompt = (rd: any): string => {
-  const platforms = rd.delivery || { glovo: false, bolt: false, wolt: false };
+  const platforms = rd.deliveryPresence || { glovo: false, bolt: false, wolt: false };
   const present = [platforms.glovo && "Glovo", platforms.bolt && "Bolt", platforms.wolt && "Wolt"].filter(Boolean);
   const absent = [!platforms.glovo && "Glovo", !platforms.bolt && "Bolt", !platforms.wolt && "Wolt"].filter(Boolean);
   
@@ -12,12 +12,12 @@ const buildDeliveryPrompt = (rd: any): string => {
   return `Ești consultant delivery HORECA România. Analizează EXCLUSIV datele reale.
 
 REGULI ABSOLUTE (încalcă-le = output invalid):
-1. NU rupe cuvinte: "Iată", "de înaltă", "aspecte", "înseamnă", "documente", "Optimizare", "rezoluție", "chedar", "recenzii", "Ajustare", "Lansare", "${rd.name}"
-2. Fără spații în numere/orare: "02:00", "40-70 RON", "4.6⭐"
-3. NU cita chei JSON ("deliveryPresence", "photos") — folosește limbaj natural
-4. Citează date: rating ${rd.rating}⭐, ${rd.reviewCount} recenzii, ${present.length}/3 platforme prezente
-5. MAXIM 550 cuvinte. Fii concis, acționabil.
-6. Recomandări SPECIFICE pentru ${rd.address} — nu generice
+1. INTERZIS să rupi cuvinte: scrie corect "Iată", "Hamburgeria", "Optimizare", "recenzii", "calitate", "livrare", "comenzi"
+2. INTERZIS să folosești sintaxă JSON, acolade {}, ghilimele tehnice sau chei în output. Traduci totul în limbaj natural de business.
+3. Fără spații în numere/orare: "02:00", "40-70 RON", "4.6⭐"
+4. Citează date reale: rating ${rd.rating}⭐, ${rd.reviewCount} recenzii, ${present.length}/3 platforme active
+5. MAXIM 500 cuvinte. Fii concis, acționabil, fără teorie generică.
+6. Recomandări SPECIFICE pentru ${rd.address} și tipul de business
 
 CONTEXT INJECTAT:
 • ${rd.name} | ${rd.address}
