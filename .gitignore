@@ -18,3 +18,4 @@ backend.broken.bak/
 *.db-shm
 *.db-wal
 .github/workflows/
+backend.broken.bak/
