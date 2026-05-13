@@ -62,43 +62,84 @@ export default function Module04_Website({ selectedLocation }: { selectedLocatio
     audit
   }, null, 2) : null;
 
-  const prompt = `Ești consultant digital senior HORECA România. Analizează auditul tehnic al website-ului restaurantului și oferă recomandări acționabile.
+const buildWebsitePrompt = (rd: any): string => {
+  const hasSite = rd.hasWebsite && rd.website && !rd.isSocialOnly;
+  const isSocial = rd.isSocialOnly;
+  const audit = rd.audit || {};
+  const pct = (v: any) => v != null ? `${Math.round(v * 100)}` : 'N/A';
 
-DATE REALE (JSON):
-${auditJson || '{"hasWebsite": false, "website": null}'}
+  let structure = '';
+  if (!hasSite && !isSocial) {
+    structure = `### 1. Diagnostic Actual
+▸ Website LIPSĂ — impact critic asupra credibilității și SEO local în ${rd.address || 'zona ta'}
+▸ De ce un site propriu convertește mai bine decât Facebook/Instagram
 
-RESTAURANT: ${placesData?.name || selectedLocation}
-WEBSITE: ${placesData?.website || 'Lipsă'}
-RATING GOOGLE: ${placesData?.rating || 'N/A'} (${placesData?.reviewCount || 0} recenzii)
+### 2. Pași Critici de Lansare (Rapid & Cost-Eficient)
+▸ 2 soluții rapide (ex: meniu digital QR, integrare comenzi WhatsApp/Glovo)
+▸ 1 acțiune de legătură cu GBP (buton "Comandă online", link în descriere)
 
-REGULI OBLIGATORII:
-- Nu rupe cuvintele în mijloc
-- Nu adăuga spații în URL-uri
-- Citează ÎNTOTDEAUNA datele reale din JSON (scoruri, timpi, erori găsite)
-- Format: titluri cu ###, bullet points cu ▸
-- Maxim 550 cuvinte
-- Limba: română
+### 3. SEO Local & Conversie
+▸ Cum capitalizezi pe rating-ul ${rd.rating}⭐ și cele ${rd.reviewCount} recenzii fără website
+▸ 2 cuvinte cheie locale de pregătit pentru viitorul homepage
 
-${!hasWebsite && !isSocialOnly ? `### ⚠️ Website Lipsă
-▸ Restaurantul nu are website propriu — impact negativ major asupra credibilității și SEO local.
-Continuă cu recomandări pentru crearea unui website simplu (Wix/Squarespace/WordPress) optimizat pentru București.` : ''}
+### 4. Plan 14 Zile
+🔴 Zilele 1-7: [acțiuni concrete cu owner]
+🟡 Zilele 8-14: [validare + 1 KPI măsurabil]`;
+  } else if (isSocial) {
+    structure = `### 1. Diagnostic Actual
+▸ Website detectat: ${rd.website} (doar social media — nu înlocuiește un site propriu)
+▸ Impact: pierdere control SEO, dependență de algoritmi, conversie scăzută
 
-${isSocialOnly ? `### ⚠️ Doar Prezență Social Media
-▸ Website-ul detectat (${placesData?.website}) este o pagină de social media, nu un website propriu.
-Continuă cu recomandări pentru crearea unui website dedicat.` : ''}
+### 2. Tranziție către Website Dedicat
+▸ 2 pași rapizi de migrare (meniu, contact, integrare GBP)
+▸ Cum păstrezi traficul social în timp ce construiești site-ul
 
-${hasWebsite ? `Structurează răspunsul în:
-### 1. Scor General
-Citează scorurile reale: Performance ${pct(audit?.performance)}/100, SEO ${pct(audit?.seo)}/100, Best Practices ${pct(audit?.bestPractices)}/100, Accessibility ${pct(audit?.accessibility)}/100.
+### 3. SEO & Conversie Locală
+▸ Cum legi noul site de GBP și platformele de livrare
+▸ 2 elemente critice de conversie (buton comandă, telefon click-to-call)
 
-### 2. Core Web Vitals
-Citează LCP, FCP, CLS, TBT din date. Explică impactul fiecăruia.
+### 4. Plan 14 Zile
+🔴 Zilele 1-7: [acțiuni concrete]
+🟡 Zilele 8-14: [validare + KPI]`;
+  } else {
+    structure = `### 1. Scor General & Diagnostic
+▸ Performance: ${pct(audit.performance)}/100 | SEO: ${pct(audit.seo)}/100 | Best Practices: ${pct(audit.bestPractices)}/100 | Accessibility: ${pct(audit.accessibility)}/100
+▸ Impact direct asupra conversiilor și ranking-ului local
 
-### 3. Probleme Identificate
-Lista problemelor reale găsite în audit (opportunities). Prioritizează după impact.
+### 2. Core Web Vitals & Viteză
+▸ LCP: ${audit.lcp || 'N/A'} | FCP: ${audit.fcp || 'N/A'} | CLS: ${audit.cls || 'N/A'} | TBT: ${audit.tbt || 'N/A'}
+▸ 1 fix tehnic urgent pentru încărcare mobilă
+
+### 3. Probleme Identificate & Optimizare
+▸ ${audit.opportunities?.length ? audit.opportunities.slice(0, 3).join(' | ') : 'Audit complet necesar'}
+▸ Cum transformi aceste fix-uri în comenzi suplimentare
 
 ### 4. Recomandări Acționabile
-Top 3-5 fix-uri concrete cu impact maxim pentru un restaurant din București.` : ''}`;
+🔴 Critice: [2 fix-uri cu impact imediat]
+🟡 Mediu: [1 optimizare SEO/conversie]
+🟢 Long-term: [1 strategie de retenție]`;
+  }
+
+  return `Ești consultant tehnic web HORECA România. Analizează EXCLUSIV datele reale.
+
+REGULI ABSOLUTE (încalcă-le = output invalid):
+1. INTERZIS să rupi cuvinte: scrie corect "având în", "propriu", "online și", "la început", "cu șabloane", "extinsă", "profilul", "deschizând", "${rd.name || 'Restaurant'}"
+2. INTERZIS să folosești sintaxă JSON, acolade {}, sau chei tehnice. Traduci totul în limbaj natural de business.
+3. Fără spații în numere: "4.6", "10:00-02:00", "253"
+4. Citează date reale: rating ${rd.rating}⭐, ${rd.reviewCount} recenzii, website: ${hasSite ? rd.website : isSocial ? rd.website + ' (social only)' : 'LIPSĂ'}
+5. MAXIM 450 cuvinte. Fii concis, acționabil, fără teorie generică.
+
+CONTEXT INJECTAT:
+• ${rd.name || 'Restaurant'} | ${rd.address || ''}
+• Rating: ${rd.rating}⭐ (${rd.reviewCount} recenzii)
+• Website: ${hasSite ? rd.website : isSocial ? rd.website + ' (social only)' : 'LIPSĂ'}
+• Audit tehnic: ${hasSite ? `Performance ${pct(audit.performance)}%, SEO ${pct(audit.seo)}%` : 'N/A'}
+
+STRUCTURĂ OBLIGATORIE:
+${structure}
+
+Limba: română. Format: ### titluri, ▸ bullets. Fără JSON.`;
+};
 
   const cards = [
     {
@@ -214,7 +255,7 @@ Top 3-5 fix-uri concrete cu impact maxim pentru un restaurant din București.` :
       {placesData && !placesLoading && !auditLoading && (
         <LiveModuleGenerator
           title="Website Audit"
-          prompt={prompt}
+          prompt={buildWebsitePrompt({ ...placesData, audit, isSocialOnly, hasWebsite })}
           restaurantData={{ ...placesData, audit, isSocialOnly, hasWebsite }}
           location={selectedLocation}
         />
