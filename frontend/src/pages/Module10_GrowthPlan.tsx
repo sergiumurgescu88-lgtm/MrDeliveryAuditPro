@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import LiveModuleGenerator from '../components/LiveModuleGenerator';
-import { usePlacesData } from '../hooks/usePlacesData';
 
 const buildGrowthPrompt = (rd: any): string => {
   const scores = rd.scores || {};
